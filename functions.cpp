@@ -63,9 +63,9 @@ void update_accel(Particle** array, int n, short tick)
 			if (i != j)
 			{
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				if (i== 0 && tick % 10000 == 0) {
-					std::cout << dist << '\n';
-				}
+				//if (i== 0 && tick % 10000 == 0) {
+				//	std::cout << dist << '\n';
+				//}
 				density = (*array[j]).mass * W(dist, h);
 				(*array[i]).density += density;
 				//if (i == 0) {
@@ -102,9 +102,9 @@ void update_accel(Particle** array, int n, short tick)
 		(*array[i]).x_accel = std::reduce(a_x, a_x + (n), 0.0l);
 		(*array[i]).y_accel = std::reduce(a_y, a_y + (n), 0.0l);
 		(*array[i]).z_accel = std::reduce(a_z, a_z + (n), 0.0l);
-		if (i == 0 && tick % 10000 == 0) {
-			std::cout << "Gravity: " << (*array[i]).x_accel << ", " << (*array[i]).y_accel << ", " << (*array[i]).z_accel << '\n';
-		}
+		//if (i == 0 && tick % 10000 == 0) {
+		//	std::cout << "Gravity: " << (*array[i]).x_accel << ", " << (*array[i]).y_accel << ", " << (*array[i]).z_accel << '\n';
+		//}
 		long double nu{ 0.001 };
 		(*array[i]).x_accel -= ((*array[i]).x_vprev * nu);
 		(*array[i]).y_accel -= ((*array[i]).y_vprev * nu);
@@ -197,7 +197,7 @@ void print_Energy(Particle** array, int n) {
 	std::cout << std::setprecision(16) << E_total << '\n';
 }
 
-void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick) {
+void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick, int focus) {
 	int i{};
 	float x_raw{}, y_raw{}, z_raw{};
 	float x_pos{}, y_pos{}, x_adj{}, y_adj{};
@@ -211,29 +211,10 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 	const float scale = display_radius / pixel_num;
 	const float middle = static_cast<float>(pixel_num) / 2;
 
-	float minx{}, miny{}, minz{}, maxx{}, maxy{}, maxz{};
-	for (i = 0; i < n; ++i) {
-		if ((*array[i]).x < minx)
-			minx = static_cast<float>((*array[i]).x);
-		if ((*array[i]).x > maxx)
-			maxx = static_cast<float>((*array[i]).x);
-		if ((*array[i]).y < miny)
-			miny = static_cast<float>((*array[i]).y);
-		if ((*array[i]).y > maxy)
-			maxy = static_cast<float>((*array[i]).y);
-		if ((*array[i]).z < minz)
-			minz = static_cast<float>((*array[i]).z);
-		if ((*array[i]).z > maxz)
-			maxz = static_cast<float>((*array[i]).z);
-	}
-
 	float cenx, ceny, cenz;
-	cenx = minx + ((maxx - minx) / 2);
-	ceny = miny + ((maxy - miny) / 2);
-	cenz = minz + ((maxz - minz) / 2);
-	//if (tick == SHRT_MAX) {
-	//	std::cout << maxx - minx << ", " << maxy - miny << ", " << maxz - minz << '\n';
-	//}
+	cenx = static_cast<float>((*array[focus]).x);
+	ceny = static_cast<float>((*array[focus]).y);
+	cenz = static_cast<float>((*array[focus]).z);
 
 	for (i = 0; i < n; ++i) {
 		x_raw = static_cast<float>((*array[i]).x) - cenx;

@@ -8,11 +8,11 @@
 int main()
 {
 	int i{};
-	constexpr int n{ 2 };
+	constexpr int n{ 24 };
 	constexpr int pixel_num = 512;
-	constexpr float delta_t = .1f;
+	constexpr float delta_t = 1;
 	short tick{};
-	const int compute_ratio = 1;
+	const int compute_ratio = 100;
 
 	//Create the window and particles.
 	sf::RenderWindow window(sf::VideoMode(pixel_num, pixel_num), "Particle Simulation");
@@ -39,6 +39,7 @@ int main()
 	/*float alpha{-1.218f}, beta{.783f}, gamma{.209f};*/
 	float alpha{}, beta{}, gamma{}, scale{};
 	const float x_cam{}, y_cam{};
+	int focus{};
 	float display_radius{ 1e8 };
 
 	//Particle calculations with velocity Verlet and timer.
@@ -88,6 +89,20 @@ int main()
 				if (event.key.code == sf::Keyboard::K) {
 					display_radius += 5e6;
 				}
+				if (event.key.code == sf::Keyboard::U) {
+					focus += 1;
+					if (focus > (n - 1)) {
+					focus = n - 1;
+					}
+					std::cout << focus << '\n';
+				}
+				if (event.key.code == sf::Keyboard::J) {
+					focus -= 1;
+					if (focus < 0) {
+						focus = 0;
+					}
+					std::cout << focus << '\n';
+				}
 			}
 		}
 
@@ -102,18 +117,18 @@ int main()
 			//print_Energy(part_array, n);
 
 			//Rendering functions.
-			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick);
+			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick, focus);
 			for (i = 0; i < n; ++i) {
 				window.draw((*vertex_array[i]));
 			}
 			window.display();
 		}
 
-		//if (tick == SHRT_MAX) {
-		//	auto t2 = std::chrono::high_resolution_clock::now();
-		//	auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-		//	std::cout << ms_int.count() << '\n';
-		//}
+		if (tick == SHRT_MAX) {
+			auto t2 = std::chrono::high_resolution_clock::now();
+			auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+			std::cout << ms_int.count() << '\n';
+		}
 
 		tick += 1;
 
