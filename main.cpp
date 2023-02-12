@@ -8,7 +8,7 @@
 int main()
 {
 	int i{};
-	constexpr int n{ 24 };
+	constexpr int n{ 64 };
 	constexpr int pixel_num = 512;
 	constexpr float delta_t = 1;
 	short tick{};

@@ -7,14 +7,16 @@
 #include <random>
 #include <iomanip>
 #include <functional>
+#include <omp.h>
 
 //Mathematical constants
 constexpr long double G = 6.67430e-11;
-const long double pi = 3.14159265359;
-const long double e = 2.71828182845904523536;
+constexpr long double pi = 3.14159265359;
+constexpr long double e = 2.71828182845904523536;
 const long double pi_onehalf = pow(pi, 1.5);
 const float sqrt_3 = sqrt(3.f);
 const float sqrt_6 = sqrt(6.f);
+constexpr int thread_n = 8;
 
 //SPH constants
 const long double epsilon{ 8e5 };
@@ -41,23 +43,17 @@ long double grad_W(long double dist, long double h) {
 
 void update_accel(Particle** array, int n, short tick)
 {
-	int i{}, j{};
-	long double* a_x = new long double[n];
-	long double* a_y = new long double[n];
-	long double* a_z = new long double[n];
-
-	for (i = 0; i < n; ++i)
+	#pragma omp parallel for num_threads(thread_n)
+	for (int i = 0; i < n; ++i)
 	{
-		long double density{};
-		long double pressure{};
+		long double den{}, pres{}, den_T{}, pres_T{};
+		long double a_x{}, a_y{}, a_z{};
 		array[i]->x_accelprev = array[i]->x_accel;
 		array[i]->y_accelprev = array[i]->y_accel;
 		array[i]->z_accelprev = array[i]->z_accel;
-		array[i]->density = 0.0l;
-		array[i]->pressure = 0.0l;
 
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
-		for (j = 0; j < n; ++j)
+		for (int j = 0; j < n; ++j)
 		{
 			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 			if (i != j)
@@ -66,76 +62,67 @@ void update_accel(Particle** array, int n, short tick)
 				//if (i== 0 && tick % 10000 == 0) {
 				//	std::cout << dist << '\n';
 				//}
-				density = (*array[j]).mass * W(dist, h);
-				(*array[i]).density += density;
+				den = (*array[j]).mass * W(dist, h);
+				den_T += den;
 				//if (i == 0) {
 				//	std::cout << (*array[i]).density << '\n';
 				//}
-				pressure = eqstconst * pow(density, (1 + (1 / poly_index)));
+				pres = eqstconst * pow(den, (1 + (1 / poly_index)));
+				pres_T += pres;
 				//if (i == 0) {
 				//	std::cout << "Pressure on P0: " << pressure << '\n';
 				//}
-				(*array[i]).pressure += pressure;
 
 				float t{};
 				if (dist <= epsilon) {
 					t = 1.0f;
 				}
 				long double total_accel = G * ((*array[j]).mass / ((dist * dist * (1 - t)) + (t * epsilon * epsilon)));
-				a_x[j] = total_accel * ((j_x - i_x) / dist);
-				a_y[j] = total_accel * ((j_y - i_y) / dist);
-				a_z[j] = total_accel * ((j_z - i_z) / dist);
+				a_x += total_accel * ((j_x - i_x) / dist);
+				a_y += total_accel * ((j_y - i_y) / dist);
+				a_z += total_accel * ((j_z - i_z) / dist);
 			}
 			else
 			{
-				a_x[j] = 0;
-				a_y[j] = 0;
-				a_z[j] = 0;
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				density = (*array[j]).mass * (1.0 / (h * h * h * pi_onehalf));
-				(*array[i]).density += density;
-				pressure = eqstconst * pow(density, (1 + 1 / poly_index));
-				(*array[i]).pressure += pressure;
+				den = (*array[j]).mass * (1.0 / (h * h * h * pi_onehalf));
+				den_T += den;
+				pres = eqstconst * pow(den, (1 + 1 / poly_index));
+				pres_T += pres;
 			}
 		}
+		(*array[i]).density = den_T;
+		(*array[i]).pressure = pres_T;
 
-		(*array[i]).x_accel = std::reduce(a_x, a_x + (n), 0.0l);
-		(*array[i]).y_accel = std::reduce(a_y, a_y + (n), 0.0l);
-		(*array[i]).z_accel = std::reduce(a_z, a_z + (n), 0.0l);
+		long double nu{ 0.005 };
+		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu);
+		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu);
+		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu);
 		//if (i == 0 && tick % 10000 == 0) {
 		//	std::cout << "Gravity: " << (*array[i]).x_accel << ", " << (*array[i]).y_accel << ", " << (*array[i]).z_accel << '\n';
 		//}
-		long double nu{ 0.001 };
-		(*array[i]).x_accel -= ((*array[i]).x_vprev * nu);
-		(*array[i]).y_accel -= ((*array[i]).y_vprev * nu);
-		(*array[i]).z_accel -= ((*array[i]).z_vprev * nu);
 	}
 
-	for (i = 0; i < n; ++i) {
-		long double fluid_x{};
-		long double fluid_y{};
-		long double fluid_z{};
+	#pragma omp parallel for num_threads(thread_n)
+	for (int i = 0; i < n; ++i) 
+	{
+		long double fluid_x{}, fluid_y{}, fluid_z{};
+
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
-		for (j = 0; j < n; ++j) {
+		for (int j = 0; j < n; ++j) {
 			if (j != i) {
 				long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+				
 				long double grad_T = grad_W(dist, h);
 				long double grad_x = ((j_x - i_x) / dist) * grad_T;
 				long double grad_y = ((j_y - i_y) / dist) * grad_T;
 				long double grad_z = ((j_z - i_z) / dist) * grad_T;
-				//if (i == 1) {
-				//	std::cout << grad_x << ", " << grad_y << ", " << grad_z << '\n';
-				//}
 
 				long double fluid_force = ((*array[i]).pressure / ((*array[i]).density * (*array[i]).density)) + ((*array[j]).pressure / ((*array[j]).density * (*array[j]).density));
 				fluid_x += (*array[j]).mass * fluid_force * grad_x;
 				fluid_y += (*array[j]).mass * fluid_force * grad_y;
 				fluid_z += (*array[j]).mass * fluid_force * grad_z;
-
-				//if (i == 1) {
-				//	std::cout << fluid_x << ", " << fluid_y << ", " << fluid_z << '\n';
-				//}
 
 				(*array[i]).x_accel += fluid_x;
 				(*array[i]).y_accel += fluid_y;
@@ -143,14 +130,11 @@ void update_accel(Particle** array, int n, short tick)
 			}
 		}
 	}
-	delete[] a_x;
-	delete[] a_y;
-	delete[] a_z;
 }
 
 void update_vel(Particle** part_array, int n, float delta_t) {
-	int i{};
-	for (i = 0; i < n; ++i) {
+	#pragma omp parallel for num_threads(thread_n)
+	for (int i = 0; i < n; ++i) {
 		(*part_array[i]).x_v = (*part_array[i]).x_vprev + 0.5 * ((*part_array[i]).x_accel + (*part_array[i]).x_accelprev) * delta_t;
 		(*part_array[i]).y_v = (*part_array[i]).y_vprev + 0.5 * ((*part_array[i]).y_accel + (*part_array[i]).y_accelprev) * delta_t;
 		(*part_array[i]).z_v = (*part_array[i]).z_vprev + 0.5 * ((*part_array[i]).z_accel + (*part_array[i]).z_accelprev) * delta_t;
@@ -161,8 +145,8 @@ void update_vel(Particle** part_array, int n, float delta_t) {
 }
 
 void update_pos(Particle** array, int n, float delta_t) {
-	int i{};
-	for (i = 0; i < n; ++i) {
+	#pragma omp parallel for num_threads(thread_n)
+	for (int i = 0; i < n; ++i) {
 		(*array[i]).x = (*array[i]).x_prev + ((*array[i]).x_v * delta_t) + (0.5 * (*array[i]).x_accel * delta_t * delta_t);
 		(*array[i]).y = (*array[i]).y_prev + ((*array[i]).y_v * delta_t) + (0.5 * (*array[i]).y_accel * delta_t * delta_t);
 		(*array[i]).z = (*array[i]).z_prev + ((*array[i]).z_v * delta_t) + (0.5 * (*array[i]).z_accel * delta_t * delta_t);
