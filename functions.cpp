@@ -19,10 +19,10 @@ const float sqrt_6 = sqrt(6.f);
 constexpr int thread_n = 8;
 
 //SPH constants
-const long double epsilon{ 8e5 };
-const long double h = 1e6;
-const long double eqstconst = 1e9;
-const long double poly_index = 1;
+constexpr long double epsilon{ 8e5 };
+constexpr long double h = 1e6;
+constexpr long double eqstconst = 1e9;
+constexpr long double poly_index = 1;
 
 //Random long double generator.
 long double rand_ld(long double lower, long double upper)
@@ -109,6 +109,9 @@ void update_accel(Particle** array, int n, short tick)
 		long double fluid_x{}, fluid_y{}, fluid_z{};
 
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+		
+		
+		
 		for (int j = 0; j < n; ++j) {
 			if (j != i) {
 				long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
