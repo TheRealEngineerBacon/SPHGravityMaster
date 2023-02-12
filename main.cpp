@@ -7,12 +7,11 @@
 
 int main()
 {
-	int i{};
 	constexpr int n{ 64 };
 	constexpr int pixel_num = 512;
 	constexpr float delta_t = 1;
 	short tick{};
-	const int compute_ratio = 100;
+	constexpr int compute_ratio = 100;
 
 	//Create the window and particles.
 	sf::RenderWindow window(sf::VideoMode(pixel_num, pixel_num), "Particle Simulation");
@@ -23,14 +22,14 @@ int main()
 	//window.setVerticalSyncEnabled(true);
 
 	Particle** part_array = new Particle * [n];
-	for (i = 0; i < n; ++i) {
+	for (int i = 0; i < n; ++i) {
 		part_array[i] = new Particle(i, n);
 	}
 	update_accel(part_array, n, tick);
 
 	//Create shapes via array pointer.
 	sf::CircleShape** vertex_array = new sf::CircleShape * [n];
-	for (i = 0; i < n; ++i) {
+	for (int i = 0; i < n; ++i) {
 		vertex_array[i] = new sf::CircleShape[n];
 		(*vertex_array[i]).setRadius(2.f);
 		(*vertex_array[i]).setPointCount(6);
@@ -38,7 +37,6 @@ int main()
 
 	/*float alpha{-1.218f}, beta{.783f}, gamma{.209f};*/
 	float alpha{}, beta{}, gamma{}, scale{};
-	const float x_cam{}, y_cam{};
 	int focus{};
 	float display_radius{ 1e8 };
 
@@ -118,7 +116,7 @@ int main()
 
 			//Rendering functions.
 			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick, focus);
-			for (i = 0; i < n; ++i) {
+			for (int i = 0; i < n; ++i) {
 				window.draw((*vertex_array[i]));
 			}
 			window.display();
