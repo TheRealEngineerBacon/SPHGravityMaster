@@ -16,25 +16,38 @@ public:
 	long double x{}, x_prev{}, x_v{}, x_vprev{}, x_accel{}, x_accelprev{};
 	long double y{}, y_prev{}, y_v{}, y_vprev{}, y_accel{}, y_accelprev{};
 	long double z{}, z_prev{}, z_v{}, z_vprev{}, z_accel{}, z_accelprev{};
+	long double density{}, pressure{};
 
-	//long double x_hist[101]{};						//Stores history for file output/trailing.
-	//long double y_hist[101]{};
-	//long double z_hist[101]{};
-
-	Particle(int num)
+	Particle(int num, int n)
 	{
-		id = num;
-		mass = 5.97e24;
-		x = rand_ld(-1, 1) * 3.5e8,
-			y = rand_ld(-1, 1) * 3.5e8,
-			z = rand_ld(-1, 1) * 3.5e8;
-		x_prev = x, y_prev = y, z_prev = z;
-		x_vprev = 0, y_vprev = 0, z_vprev = 0;
-	}
+		//id = num;
+		//mass = 5.97e24 / n;
+		//x = rand_ld(-1, 1) * 5e7,
+		//	y = rand_ld(-1, 1) * 5e7,
+		//	z = rand_ld(-1, 1) * 5e7;
+		//x_prev = x, y_prev = y, z_prev = z;
+		//x_vprev = 0, y_vprev = 0, z_vprev = 0;
+		////rand_ld(-1, 1) * 6.371e6
 
-	//x_hist[0] = x;
-	//y_hist[0] = y;
-	//z_hist[0] = z;
+		if (num == 0) {
+			id = num;
+			mass = 5.97e24 / n;
+			x = 3e6,
+				y = 0,
+				z = 0;
+			x_prev = x, y_prev = y, z_prev = z;
+			x_vprev = 0, y_vprev = 0, z_vprev = 0;
+		}
+		else {
+			id = num;
+			mass = 5.97e24 / n;
+			x = -3e6,
+				y = 0,
+				z = 0;
+			x_prev = x, y_prev = y, z_prev = z;
+			x_vprev = 0, y_vprev = 0, z_vprev = 0;
+		}
+	}
 };
 
 #endif

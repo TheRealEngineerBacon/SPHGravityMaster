@@ -8,38 +8,38 @@
 int main()
 {
 	int i{};
-	constexpr int n{ 16 };
+	constexpr int n{ 2 };
 	constexpr int pixel_num = 512;
-	constexpr float delta_t = 1;
+	constexpr float delta_t = .1f;
 	short tick{};
-	const int compute_ratio = 500;
+	const int compute_ratio = 1;
 
 	//Create the window and particles.
 	sf::RenderWindow window(sf::VideoMode(pixel_num, pixel_num), "Particle Simulation");
 	sf::View view = window.getDefaultView();
 	view.setSize(pixel_num, -pixel_num);
 	window.setView(view);
-	//window.setFramerateLimit(30);
+	//window.setFramerateLimit(60);
 	//window.setVerticalSyncEnabled(true);
 
 	Particle** part_array = new Particle * [n];
 	for (i = 0; i < n; ++i) {
-		part_array[i] = new Particle(i);
+		part_array[i] = new Particle(i, n);
 	}
-	update_accel(part_array, n);
+	update_accel(part_array, n, tick);
 
 	//Create shapes via array pointer.
 	sf::CircleShape** vertex_array = new sf::CircleShape * [n];
 	for (i = 0; i < n; ++i) {
 		vertex_array[i] = new sf::CircleShape[n];
 		(*vertex_array[i]).setRadius(2.f);
-		(*vertex_array[i]).setPointCount(8);
+		(*vertex_array[i]).setPointCount(6);
 	}
 
 	/*float alpha{-1.218f}, beta{.783f}, gamma{.209f};*/
 	float alpha{}, beta{}, gamma{}, scale{};
 	const float x_cam{}, y_cam{};
-	float display_radius{ 7.656e8 };
+	float display_radius{ 1e8 };
 
 	//Particle calculations with velocity Verlet and timer.
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -81,12 +81,12 @@ int main()
 					gamma -= 0.087f;
 				}
 				if (event.key.code == sf::Keyboard::I) {
-					display_radius += 1e8;
-				}
-				if (event.key.code == sf::Keyboard::K) {
-					display_radius -= 1e8;
+					display_radius -= 5e6;
 					if (display_radius < 0)
 						display_radius = 0;
+				}
+				if (event.key.code == sf::Keyboard::K) {
+					display_radius += 5e6;
 				}
 			}
 		}
@@ -95,25 +95,25 @@ int main()
 		window.clear(sf::Color::Black);
 
 		update_pos(part_array, n, delta_t);
-		update_accel(part_array, n);
+		update_accel(part_array, n, tick);
 		update_vel(part_array, n, delta_t);
 
 		if (tick % compute_ratio == 0) {
 			//print_Energy(part_array, n);
 
 			//Rendering functions.
-			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma);
+			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick);
 			for (i = 0; i < n; ++i) {
 				window.draw((*vertex_array[i]));
 			}
 			window.display();
 		}
 
-		if (tick == SHRT_MAX) {
-			auto t2 = std::chrono::high_resolution_clock::now();
-			auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-			std::cout << ms_int.count() << '\n';
-		}
+		//if (tick == SHRT_MAX) {
+		//	auto t2 = std::chrono::high_resolution_clock::now();
+		//	auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+		//	std::cout << ms_int.count() << '\n';
+		//}
 
 		tick += 1;
 

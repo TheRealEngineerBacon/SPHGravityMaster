@@ -8,12 +8,21 @@
 #include <iomanip>
 #include <functional>
 
+//Mathematical constants
 constexpr long double G = 6.67430e-11;
-constexpr long double epsilon = 1e6;
+const long double pi = 3.14159265359;
+const long double e = 2.71828182845904523536;
+const long double pi_onehalf = pow(pi, 1.5);
 const float sqrt_3 = sqrt(3.f);
 const float sqrt_6 = sqrt(6.f);
 
-//Random int gen. Inclusive range (lower <= return <= upper).
+//SPH constants
+const long double epsilon{ 8e5 };
+const long double h = 1e6;
+const long double eqstconst = 1e9;
+const long double poly_index = 1;
+
+//Random long double generator.
 long double rand_ld(long double lower, long double upper)
 {
 	std::random_device rd;
@@ -22,17 +31,30 @@ long double rand_ld(long double lower, long double upper)
 	return dist(gen);
 }
 
-void update_accel(Particle** array, int n)			//input is pointer to array. Array consists of pointers to objects.
+long double W(long double dist, long double h) {
+	return (1.0 / (h * h * h * pi_onehalf)) * exp(-(dist * dist) / (h * h));
+}
+
+long double grad_W(long double dist, long double h) {
+	return (-2 / (h * h * h * h * h * pi_onehalf)) * exp(-(dist * dist) / (h * h));
+}
+
+void update_accel(Particle** array, int n, short tick)
 {
 	int i{}, j{};
 	long double* a_x = new long double[n];
 	long double* a_y = new long double[n];
 	long double* a_z = new long double[n];
+
 	for (i = 0; i < n; ++i)
 	{
+		long double density{};
+		long double pressure{};
 		array[i]->x_accelprev = array[i]->x_accel;
 		array[i]->y_accelprev = array[i]->y_accel;
 		array[i]->z_accelprev = array[i]->z_accel;
+		array[i]->density = 0.0l;
+		array[i]->pressure = 0.0l;
 
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
 		for (j = 0; j < n; ++j)
@@ -41,14 +63,25 @@ void update_accel(Particle** array, int n)			//input is pointer to array. Array 
 			if (i != j)
 			{
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				long double p{};
-				if (dist >= epsilon) {
-					p = 1;
+				if (i== 0 && tick % 10000 == 0) {
+					std::cout << dist << '\n';
 				}
-				else {
-					p = dist / epsilon;
+				density = (*array[j]).mass * W(dist, h);
+				(*array[i]).density += density;
+				//if (i == 0) {
+				//	std::cout << (*array[i]).density << '\n';
+				//}
+				pressure = eqstconst * pow(density, (1 + (1 / poly_index)));
+				//if (i == 0) {
+				//	std::cout << "Pressure on P0: " << pressure << '\n';
+				//}
+				(*array[i]).pressure += pressure;
+
+				float t{};
+				if (dist <= epsilon) {
+					t = 1.0f;
 				}
-				long double total_accel = G * ((*array[j]).mass / (p * (dist * dist) + (1 - p) * (epsilon * epsilon)));
+				long double total_accel = G * ((*array[j]).mass / ((dist * dist * (1 - t)) + (t * epsilon * epsilon)));
 				a_x[j] = total_accel * ((j_x - i_x) / dist);
 				a_y[j] = total_accel * ((j_y - i_y) / dist);
 				a_z[j] = total_accel * ((j_z - i_z) / dist);
@@ -58,12 +91,57 @@ void update_accel(Particle** array, int n)			//input is pointer to array. Array 
 				a_x[j] = 0;
 				a_y[j] = 0;
 				a_z[j] = 0;
+				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+				density = (*array[j]).mass * (1.0 / (h * h * h * pi_onehalf));
+				(*array[i]).density += density;
+				pressure = eqstconst * pow(density, (1 + 1 / poly_index));
+				(*array[i]).pressure += pressure;
 			}
 		}
+
 		(*array[i]).x_accel = std::reduce(a_x, a_x + (n), 0.0l);
 		(*array[i]).y_accel = std::reduce(a_y, a_y + (n), 0.0l);
 		(*array[i]).z_accel = std::reduce(a_z, a_z + (n), 0.0l);
+		if (i == 0 && tick % 10000 == 0) {
+			std::cout << "Gravity: " << (*array[i]).x_accel << ", " << (*array[i]).y_accel << ", " << (*array[i]).z_accel << '\n';
+		}
+		long double nu{ 0.001 };
+		(*array[i]).x_accel -= ((*array[i]).x_vprev * nu);
+		(*array[i]).y_accel -= ((*array[i]).y_vprev * nu);
+		(*array[i]).z_accel -= ((*array[i]).z_vprev * nu);
+	}
 
+	for (i = 0; i < n; ++i) {
+		long double fluid_x{};
+		long double fluid_y{};
+		long double fluid_z{};
+		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+		for (j = 0; j < n; ++j) {
+			if (j != i) {
+				long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
+				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+				long double grad_T = grad_W(dist, h);
+				long double grad_x = ((j_x - i_x) / dist) * grad_T;
+				long double grad_y = ((j_y - i_y) / dist) * grad_T;
+				long double grad_z = ((j_z - i_z) / dist) * grad_T;
+				//if (i == 1) {
+				//	std::cout << grad_x << ", " << grad_y << ", " << grad_z << '\n';
+				//}
+
+				long double fluid_force = ((*array[i]).pressure / ((*array[i]).density * (*array[i]).density)) + ((*array[j]).pressure / ((*array[j]).density * (*array[j]).density));
+				fluid_x += (*array[j]).mass * fluid_force * grad_x;
+				fluid_y += (*array[j]).mass * fluid_force * grad_y;
+				fluid_z += (*array[j]).mass * fluid_force * grad_z;
+
+				//if (i == 1) {
+				//	std::cout << fluid_x << ", " << fluid_y << ", " << fluid_z << '\n';
+				//}
+
+				(*array[i]).x_accel += fluid_x;
+				(*array[i]).y_accel += fluid_y;
+				(*array[i]).z_accel += fluid_z;
+			}
+		}
 	}
 	delete[] a_x;
 	delete[] a_y;
@@ -119,7 +197,7 @@ void print_Energy(Particle** array, int n) {
 	std::cout << std::setprecision(16) << E_total << '\n';
 }
 
-void update_vertex_pos(Particle** part_array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma) {
+void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick) {
 	int i{};
 	float x_raw{}, y_raw{}, z_raw{};
 	float x_pos{}, y_pos{}, x_adj{}, y_adj{};
@@ -132,10 +210,35 @@ void update_vertex_pos(Particle** part_array, sf::CircleShape** vertex_array, in
 	const float radius = (*vertex_array[0]).getRadius();
 	const float scale = display_radius / pixel_num;
 	const float middle = static_cast<float>(pixel_num) / 2;
+
+	float minx{}, miny{}, minz{}, maxx{}, maxy{}, maxz{};
 	for (i = 0; i < n; ++i) {
-		x_raw = static_cast<float>((*part_array[i]).x);
-		y_raw = static_cast<float>((*part_array[i]).y);
-		z_raw = static_cast<float>((*part_array[i]).z);
+		if ((*array[i]).x < minx)
+			minx = static_cast<float>((*array[i]).x);
+		if ((*array[i]).x > maxx)
+			maxx = static_cast<float>((*array[i]).x);
+		if ((*array[i]).y < miny)
+			miny = static_cast<float>((*array[i]).y);
+		if ((*array[i]).y > maxy)
+			maxy = static_cast<float>((*array[i]).y);
+		if ((*array[i]).z < minz)
+			minz = static_cast<float>((*array[i]).z);
+		if ((*array[i]).z > maxz)
+			maxz = static_cast<float>((*array[i]).z);
+	}
+
+	float cenx, ceny, cenz;
+	cenx = minx + ((maxx - minx) / 2);
+	ceny = miny + ((maxy - miny) / 2);
+	cenz = minz + ((maxz - minz) / 2);
+	//if (tick == SHRT_MAX) {
+	//	std::cout << maxx - minx << ", " << maxy - miny << ", " << maxz - minz << '\n';
+	//}
+
+	for (i = 0; i < n; ++i) {
+		x_raw = static_cast<float>((*array[i]).x) - cenx;
+		y_raw = static_cast<float>((*array[i]).y) - ceny;
+		z_raw = static_cast<float>((*array[i]).z) - cenz;
 
 		//Rotation then orthographic projection.
 		x_adj = x_raw * (cos_b * cos_g)
