@@ -7,11 +7,11 @@
 
 int main()
 {
-	constexpr int n{ 192 };
+	constexpr int n{ 128 };
 	constexpr int pixel_num = 512;
 	constexpr float delta_t = 0.5;
 	short tick{};
-	constexpr int compute_ratio = 100;
+	constexpr int compute_ratio = 200;
 
 	//Create the window and particles.
 	sf::RenderWindow window(sf::VideoMode(pixel_num, pixel_num), "Particle Simulation");
@@ -32,7 +32,7 @@ int main()
 	for (int i = 0; i < n; ++i) {
 		vertex_array[i] = new sf::CircleShape[n];
 		(*vertex_array[i]).setRadius(2.f);
-		(*vertex_array[i]).setPointCount(6);
+		(*vertex_array[i]).setPointCount(8);
 	}
 
 	/*float alpha{-1.218f}, beta{.783f}, gamma{.209f};*/
@@ -120,14 +120,13 @@ int main()
 			window.display();
 		}
 
-		//if (tick == SHRT_MAX) {
-		//	print_Energy(part_array, n);
-		//}
+		int image_num{};
 		if (tick == SHRT_MAX) {
 			/*auto t2 = std::chrono::high_resolution_clock::now();
 			auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 			std::cout << ms_int.count() << '\n';*/
-			print_Data(part_array, n, focus);
+			//print_Data(part_array, n, focus);
+			check_Singularity(part_array, n);
 		}
 
 		tick += 1;

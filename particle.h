@@ -29,6 +29,19 @@ public:
 			//3e7
 			x_prev = x, y_prev = y, z_prev = z;
 			x_vprev = 0, y_vprev = 0, z_vprev = 0;
+			int vel = 1000;
+			if (x > 0) {
+				y_vprev = -vel;
+			}
+			else {
+				y_vprev = vel;
+			}
+			if (y > 0) {
+				x_vprev = vel;
+			}
+			else {
+				x_vprev = -vel;
+			}
 			//rand_ld(-1, 1) * 6.371e6
 		}
 		else {

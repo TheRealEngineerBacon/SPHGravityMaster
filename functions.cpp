@@ -13,15 +13,12 @@
 constexpr long double G = 6.67430e-11;
 constexpr long double pi = 3.14159265359;
 constexpr long double e = 2.718281828459045;
-constexpr long double nine_fourths = 9 / 4;
-const long double pi_threehalf = pow(pi, 1.5);
+//const long double pi_threehalf = pow(pi, 1.5);
 const long double one_over_pi = 1 / pi;
-//const float sqrt_3 = sqrt(3.f);
-//const float sqrt_6 = sqrt(6.f);
 constexpr int thread_n = 16;
 
 //SPH constants
-constexpr long double epsilon{ 9e5 };
+constexpr long double epsilon{ 1.2e6 };
 constexpr long double h = 1e6;
 constexpr long double eqstconst = 1;
 constexpr long double poly_index = 1;
@@ -73,6 +70,7 @@ long double grad_W(long double dist, long double h) {
 
 void update_accel(Particle** array, int n, short tick)
 {
+	//Computation of gravitation forces, density, and fluid pressure.
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i)
 	{
@@ -84,13 +82,13 @@ void update_accel(Particle** array, int n, short tick)
 
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
 
-		//Iterate over all particles, calculate den, press, and gravity forces.
 		for (int j = 0; j < n; ++j)
 		{
 			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 			if (i != j)
 			{
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+
 				den = (*array[j]).mass * W(dist, h);
 				den_T += den;
 				pres = eqstconst * pow(den, (1 + (1 / poly_index)));
@@ -111,8 +109,7 @@ void update_accel(Particle** array, int n, short tick)
 			}
 			else
 			{
-				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				den = (*array[j]).mass * (1.0 / (h * h * h * pi_threehalf));
+				den = (*array[j]).mass * (1.0 / (h * h * h * pi));
 				den_T += den;
 				//pres = eqstconst * pow(den, (1 + 1 / poly_index));
 				//pres_T += pres;
@@ -121,12 +118,13 @@ void update_accel(Particle** array, int n, short tick)
 		(*array[i]).density = den_T;
 		(*array[i]).pressure = pres_T;
 
-		long double nu{ 0.002 };
+		long double nu{ 0.000 };
 		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu);
 		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu);
 		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu);
 	}
 
+	//Computation of fluid forces.
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i) 
 	{
@@ -251,3 +249,24 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 	}
 }
 
+void check_Singularity(Particle** array, int n) {
+	/* 
+	This function checks for singularities, events in which the gravitiational forces overcomes the fluid force.
+	The result is two particles beings sucked together, thus occupying the same location in space. This is not desirable.
+	*/
+	bool singularity = false;
+	for (int i = 0; i < n; ++i) {
+		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+
+		for (int j = i+1; j < n; ++j) {
+			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
+			long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+			if (dist < 1e5) {
+				singularity = true;
+			}
+		}
+	}
+	if (singularity == true) {
+		std::cout << "Warning: Singularity event detected." << '\n';
+	}
+}
