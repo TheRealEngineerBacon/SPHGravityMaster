@@ -7,9 +7,9 @@
 
 int main()
 {
-	constexpr int n{ 64 };
+	constexpr int n{ 192 };
 	constexpr int pixel_num = 512;
-	constexpr float delta_t = 1;
+	constexpr float delta_t = 0.5;
 	short tick{};
 	constexpr int compute_ratio = 100;
 
@@ -39,10 +39,9 @@ int main()
 	float alpha{}, beta{}, gamma{}, scale{};
 	int focus{};
 	float display_radius{ 1e8 };
-
-	//Particle calculations with velocity Verlet and timer.
+	//std::chrono::steady_clock::time_point t1, t2;
 	auto t1 = std::chrono::high_resolution_clock::now();
-
+	
 	//Create main window loop.
 	while (window.isOpen()) {
 		window.setKeyRepeatEnabled(true);
@@ -80,12 +79,12 @@ int main()
 					gamma -= 0.087f;
 				}
 				if (event.key.code == sf::Keyboard::I) {
-					display_radius -= 5e6;
+					display_radius -= 1e6;
 					if (display_radius < 0)
 						display_radius = 0;
 				}
 				if (event.key.code == sf::Keyboard::K) {
-					display_radius += 5e6;
+					display_radius += 1e6;
 				}
 				if (event.key.code == sf::Keyboard::U) {
 					focus += 1;
@@ -112,7 +111,6 @@ int main()
 		update_vel(part_array, n, delta_t);
 
 		if (tick % compute_ratio == 0) {
-			//print_Energy(part_array, n);
 
 			//Rendering functions.
 			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick, focus);
@@ -122,10 +120,14 @@ int main()
 			window.display();
 		}
 
+		//if (tick == SHRT_MAX) {
+		//	print_Energy(part_array, n);
+		//}
 		if (tick == SHRT_MAX) {
-			auto t2 = std::chrono::high_resolution_clock::now();
+			/*auto t2 = std::chrono::high_resolution_clock::now();
 			auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-			std::cout << ms_int.count() << '\n';
+			std::cout << ms_int.count() << '\n';*/
+			print_Data(part_array, n, focus);
 		}
 
 		tick += 1;
