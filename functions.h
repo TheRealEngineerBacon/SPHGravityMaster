@@ -13,7 +13,7 @@ void update_vel(Particle** part_array, int n, float delta_t);
 
 void update_pos(Particle** part_array, int n, float delta_t);
 
-void print_Energy(Particle** part_array, int n);
+void print_Data(Particle** part_array, int n, int focus);
 
 void update_vertex_pos(Particle** part_array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick, int focus);
 
