@@ -20,14 +20,27 @@ public:
 
 	Particle(int num, int n)
 	{
-		id = num;
-		mass = 5.97e24 / n;
-		x = rand_ld(-1, 1) * 2e7,
-			y = rand_ld(-1, 1) * 2e7,
-			z = rand_ld(-1, 1) * 2e7;
-		x_prev = x, y_prev = y, z_prev = z;
-		x_vprev = 0, y_vprev = 0, z_vprev = 0;
-		//rand_ld(-1, 1) * 6.371e6
+		if (num != 0) {
+			id = num;
+			mass = (5.97e24 / n) + (rand_ld(-1, 1) * 2e22);
+			x = rand_ld(-1, 1) * 3e7,
+				y = rand_ld(-1, 1) * 3e7,
+				z = rand_ld(-1, 1) * 3e7;
+			//3e7
+			x_prev = x, y_prev = y, z_prev = z;
+			x_vprev = 0, y_vprev = 0, z_vprev = 0;
+			//rand_ld(-1, 1) * 6.371e6
+		}
+		else {
+			id = num;
+			mass = (5.97e24 / n) + (rand_ld(-1, 1) * 2e22);
+			x = 0,
+				y = 0,
+				z = 0;
+			x_prev = x, y_prev = y, z_prev = z;
+			x_vprev = 0, y_vprev = 0, z_vprev = 0;
+		}
+		
 
 		//if (num == 0) {
 		//	id = num;
@@ -49,5 +62,4 @@ public:
 		//}
 	}
 };
-
 #endif
