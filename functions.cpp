@@ -12,16 +12,18 @@
 //Mathematical constants
 constexpr long double G = 6.67430e-11;
 constexpr long double pi = 3.14159265359;
-constexpr long double e = 2.71828182845904523536;
-const long double pi_onehalf = pow(pi, 1.5);
-const float sqrt_3 = sqrt(3.f);
-const float sqrt_6 = sqrt(6.f);
-constexpr int thread_n = 8;
+constexpr long double e = 2.718281828459045;
+constexpr long double nine_fourths = 9 / 4;
+const long double pi_threehalf = pow(pi, 1.5);
+const long double one_over_pi = 1 / pi;
+//const float sqrt_3 = sqrt(3.f);
+//const float sqrt_6 = sqrt(6.f);
+constexpr int thread_n = 16;
 
 //SPH constants
-constexpr long double epsilon{ 8e5 };
+constexpr long double epsilon{ 9e5 };
 constexpr long double h = 1e6;
-constexpr long double eqstconst = 1e9;
+constexpr long double eqstconst = 1;
 constexpr long double poly_index = 1;
 
 //Random long double generator.
@@ -34,11 +36,39 @@ long double rand_ld(long double lower, long double upper)
 }
 
 long double W(long double dist, long double h) {
-	return (1.0 / (h * h * h * pi_onehalf)) * exp(-(dist * dist) / (h * h));
+	const long double h1 = 1.0L / h;
+	const long double q = dist * h1;
+	if (q > 2) {
+		return 0.0L;
+	}
+	else if (q >= 1) {
+		const long double sigma = 0.25 * one_over_pi * h1 * h1 * h1;
+		const long double inner = 2.0 - q;
+		return sigma * inner * inner * inner;
+	}
+	else if (q >= 0) {
+		const long double sigma = one_over_pi * h1 * h1 * h1;
+		return sigma * (1 - (1.5 * q * q) + (0.75 * q * q * q));
+	}
+	//return (1.0 / (h * h * h * pi_threehalf)) * exp(-(dist * dist) / (h * h));
 }
 
 long double grad_W(long double dist, long double h) {
-	return (-2 / (h * h * h * h * h * pi_onehalf)) * exp(-(dist * dist) / (h * h));
+	const long double h1 = 1.0L / h;
+	const long double q = dist * h1;
+	if (q > 2) {
+		return -0.0L;
+	}
+	else if (q >= 1) {
+		long double sigma = 0.75 * one_over_pi * h1 * h1 * h1;
+		long double inner = 2.0 - q;
+		return -sigma * inner * inner;
+	}
+	else if (q >= 0) {
+		long double sigma = one_over_pi * h1 * h1 * h1;
+		return -sigma * (-3 * q * (1 - 0.75 * q));
+	}
+	//return (-2 / (h * h * h * h * h * pi_threehalf)) * exp(-(dist * dist) / (h * h));
 }
 
 void update_accel(Particle** array, int n, short tick)
@@ -53,70 +83,61 @@ void update_accel(Particle** array, int n, short tick)
 		array[i]->z_accelprev = array[i]->z_accel;
 
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+
+		//Iterate over all particles, calculate den, press, and gravity forces.
 		for (int j = 0; j < n; ++j)
 		{
 			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 			if (i != j)
 			{
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				//if (i== 0 && tick % 10000 == 0) {
-				//	std::cout << dist << '\n';
-				//}
 				den = (*array[j]).mass * W(dist, h);
 				den_T += den;
-				//if (i == 0) {
-				//	std::cout << (*array[i]).density << '\n';
-				//}
 				pres = eqstconst * pow(den, (1 + (1 / poly_index)));
 				pres_T += pres;
-				//if (i == 0) {
-				//	std::cout << "Pressure on P0: " << pressure << '\n';
-				//}
 
 				float t{};
 				if (dist <= epsilon) {
 					t = 1.0f;
 				}
+				else {
+					t = 0.0f;
+				}
 				long double total_accel = G * ((*array[j]).mass / ((dist * dist * (1 - t)) + (t * epsilon * epsilon)));
 				a_x += total_accel * ((j_x - i_x) / dist);
 				a_y += total_accel * ((j_y - i_y) / dist);
 				a_z += total_accel * ((j_z - i_z) / dist);
+
 			}
 			else
 			{
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				den = (*array[j]).mass * (1.0 / (h * h * h * pi_onehalf));
+				den = (*array[j]).mass * (1.0 / (h * h * h * pi_threehalf));
 				den_T += den;
-				pres = eqstconst * pow(den, (1 + 1 / poly_index));
-				pres_T += pres;
+				//pres = eqstconst * pow(den, (1 + 1 / poly_index));
+				//pres_T += pres;
 			}
 		}
 		(*array[i]).density = den_T;
 		(*array[i]).pressure = pres_T;
 
-		long double nu{ 0.005 };
+		long double nu{ 0.002 };
 		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu);
 		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu);
 		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu);
-		//if (i == 0 && tick % 10000 == 0) {
-		//	std::cout << "Gravity: " << (*array[i]).x_accel << ", " << (*array[i]).y_accel << ", " << (*array[i]).z_accel << '\n';
-		//}
 	}
 
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i) 
 	{
 		long double fluid_x{}, fluid_y{}, fluid_z{};
-
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
-		
-		
 		
 		for (int j = 0; j < n; ++j) {
 			if (j != i) {
 				long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				
+
 				long double grad_T = grad_W(dist, h);
 				long double grad_x = ((j_x - i_x) / dist) * grad_T;
 				long double grad_y = ((j_y - i_y) / dist) * grad_T;
@@ -127,11 +148,11 @@ void update_accel(Particle** array, int n, short tick)
 				fluid_y += (*array[j]).mass * fluid_force * grad_y;
 				fluid_z += (*array[j]).mass * fluid_force * grad_z;
 
-				(*array[i]).x_accel += fluid_x;
-				(*array[i]).y_accel += fluid_y;
-				(*array[i]).z_accel += fluid_z;
 			}
 		}
+		(*array[i]).x_accel += fluid_x;
+		(*array[i]).y_accel += fluid_y;
+		(*array[i]).z_accel += fluid_z;
 	}
 }
 
@@ -159,19 +180,17 @@ void update_pos(Particle** array, int n, float delta_t) {
 	}
 }
 
-void print_Energy(Particle** array, int n) {
-	int i{}, j{};
-	int array_size = n;
+void print_Data(Particle** array, int n, int focus) {
 	long double E_pot{};
 	long double E_kin{};
 	long double E_total{};
-	for (i = 0; i < array_size; ++i)
+	for (int i = 0; i < n; ++i)
 	{
 		long double vel = sqrt(pow(abs((*array[i]).x_v), 2) + pow(abs((*array[i]).y_v), 2) + pow(abs((*array[i]).z_v), 2));
 		E_kin += 0.5 * (*array[i]).mass * pow(vel, 2);
 
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
-		for (j = i + 1; j < array_size; ++j)
+		for (int j = i + 1; j < n; ++j)
 		{
 			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 			{
@@ -181,11 +200,10 @@ void print_Energy(Particle** array, int n) {
 		}
 	}
 	E_total = E_pot + E_kin;
-	std::cout << std::setprecision(16) << E_total << '\n';
+	std::cout << std::setprecision(8) << E_total << '\n';
 }
 
 void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick, int focus) {
-	int i{};
 	float x_raw{}, y_raw{}, z_raw{};
 	float x_pos{}, y_pos{}, x_adj{}, y_adj{};
 	const float sin_a = std::sin(alpha);
@@ -198,15 +216,21 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 	const float scale = display_radius / pixel_num;
 	const float middle = static_cast<float>(pixel_num) / 2;
 
+	//Shifts coordinates to focus on specific particle.
 	float cenx, ceny, cenz;
 	cenx = static_cast<float>((*array[focus]).x);
 	ceny = static_cast<float>((*array[focus]).y);
 	cenz = static_cast<float>((*array[focus]).z);
 
-	for (i = 0; i < n; ++i) {
+	long double max_den{};
+	for (int i = 0; i < n; ++i) {
 		x_raw = static_cast<float>((*array[i]).x) - cenx;
 		y_raw = static_cast<float>((*array[i]).y) - ceny;
 		z_raw = static_cast<float>((*array[i]).z) - cenz;
+
+		if ((*array[i]).density > max_den) {
+			max_den = (*array[i]).density;
+		}
 
 		//Rotation then orthographic projection.
 		x_adj = x_raw * (cos_b * cos_g)
@@ -221,6 +245,9 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 		y_pos = (y_adj / scale) + middle - radius;
 
 		(*vertex_array[i]).setPosition(x_pos, y_pos);
+	}
+	for (int i = 0; i < n; ++i) {
+		(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 3));
 	}
 }
 
