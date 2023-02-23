@@ -1,24 +1,19 @@
 #include "functions.h"
 #include "particle.h"
 #include <SFML/Graphics.hpp>
-#include <cstdlib>
-#include <cmath>
-#include <numeric>
 #include <random>
 #include <iomanip>
-#include <functional>
 #include <omp.h>
 
 //Mathematical constants
 constexpr long double G = 6.67430e-11;
 constexpr long double pi = 3.14159265359;
 constexpr long double e = 2.718281828459045;
-//const long double pi_threehalf = pow(pi, 1.5);
 const long double one_over_pi = 1 / pi;
 constexpr int thread_n = 16;
 
 //SPH constants
-constexpr long double epsilon{ 1.2e6 };
+constexpr long double epsilon{ 1.4e6 };
 constexpr long double h = 1e6;
 constexpr long double eqstconst = 1;
 constexpr long double poly_index = 1;
@@ -68,7 +63,7 @@ long double grad_W(long double dist, long double h) {
 	//return (-2 / (h * h * h * h * h * pi_threehalf)) * exp(-(dist * dist) / (h * h));
 }
 
-void update_accel(Particle** array, int n, short tick)
+void update_grav(Particle** array, int n, short tick)
 {
 	//Computation of gravitation forces, density, and fluid pressure.
 	#pragma omp parallel for num_threads(thread_n)
@@ -118,19 +113,23 @@ void update_accel(Particle** array, int n, short tick)
 		(*array[i]).density = den_T;
 		(*array[i]).pressure = pres_T;
 
-		long double nu{ 0.000 };
-		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu);
-		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu);
-		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu);
+		long double nu_x{ 0 };
+		long double nu_y{ 0 };
+		long double nu_z{ 0.0001 };
+		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x);
+		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y);
+		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z);
 	}
+}
 
+void update_fluid(Particle** array, int n, short tick) {
 	//Computation of fluid forces.
 	#pragma omp parallel for num_threads(thread_n)
-	for (int i = 0; i < n; ++i) 
+	for (int i = 0; i < n; ++i)
 	{
 		long double fluid_x{}, fluid_y{}, fluid_z{};
 		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
-		
+
 		for (int j = 0; j < n; ++j) {
 			if (j != i) {
 				long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
@@ -201,7 +200,7 @@ void print_Data(Particle** array, int n, int focus) {
 	std::cout << std::setprecision(8) << E_total << '\n';
 }
 
-void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick, int focus) {
+void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick, int focus, float x_mov, float y_mov) {
 	float x_raw{}, y_raw{}, z_raw{};
 	float x_pos{}, y_pos{}, x_adj{}, y_adj{};
 	const float sin_a = std::sin(alpha);
@@ -214,11 +213,25 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 	const float scale = display_radius / pixel_num;
 	const float middle = static_cast<float>(pixel_num) / 2;
 
+	long double mass_x{}, mass_y{}, mass_z{}, mass_total{};
+	for (int i = 0; i < n; ++i) {
+		mass_total += (*array[i]).mass;
+		mass_x = (*array[i]).mass * (*array[i]).x;
+		mass_y = (*array[i]).mass * (*array[i]).y;
+		mass_z = (*array[i]).mass * (*array[i]).z;
+	}
+
 	//Shifts coordinates to focus on specific particle.
+	//float cenx, ceny, cenz;
+	//cenx = static_cast<float>((*array[focus]).x);
+	//ceny = static_cast<float>((*array[focus]).y);
+	//cenz = static_cast<float>((*array[focus]).z);
+
+	//Shifts coordinates to focus on center of mass.
 	float cenx, ceny, cenz;
-	cenx = static_cast<float>((*array[focus]).x);
-	ceny = static_cast<float>((*array[focus]).y);
-	cenz = static_cast<float>((*array[focus]).z);
+	cenx = static_cast<float>(mass_x / mass_total);
+	ceny = static_cast<float>(mass_y / mass_total);
+	cenz = static_cast<float>(mass_z / mass_total);
 
 	long double max_den{};
 	for (int i = 0; i < n; ++i) {
@@ -233,11 +246,13 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 		//Rotation then orthographic projection.
 		x_adj = x_raw * (cos_b * cos_g)
 			+ y_raw * ((sin_a * sin_b * cos_g) - (cos_a * sin_g))
-			+ z_raw * ((cos_a * sin_b * cos_g) + (sin_a * sin_g));
+			+ z_raw * ((cos_a * sin_b * cos_g) + (sin_a * sin_g))
+			+ x_mov;
 
 		y_adj = x_raw * (cos_b * sin_g)
 			+ y_raw * ((sin_a * sin_b * sin_g) + (cos_a * cos_g))
-			+ z_raw * ((cos_a * sin_b * sin_g) - (sin_a * cos_g));
+			+ z_raw * ((cos_a * sin_b * sin_g) - (sin_a * cos_g))
+			+ y_mov;
 
 		x_pos = (x_adj / scale) + middle - radius;
 		y_pos = (y_adj / scale) + middle - radius;
