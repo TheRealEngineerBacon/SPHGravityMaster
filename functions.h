@@ -1,5 +1,6 @@
 #ifndef FUNCTIONS_H
 #define FUNCTIONS_H
+
 #include "particle.h"
 #include <SFML/Graphics.hpp>
 

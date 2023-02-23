@@ -1,7 +1,6 @@
 #ifndef PARTICLE_H
 #define PARTICLE_H
 
-#include "particle.h"									//#include and forwards here.
 #include <iostream>
 
 long double rand_ld(long double lower, long double upper);
@@ -27,7 +26,7 @@ public:
 			//3e7
 			x_prev = x, y_prev = y, z_prev = z;
 			x_vprev = 0, y_vprev = 0, z_vprev = 0;
-			int vel = 1000;
+			int vel = 900;
 			if (x > 0) {
 				y_vprev = -vel;
 			}
@@ -51,26 +50,6 @@ public:
 			x_prev = x, y_prev = y, z_prev = z;
 			x_vprev = 0, y_vprev = 0, z_vprev = 0;
 		}
-		
-
-		//if (num == 0) {
-		//	id = num;
-		//	mass = 5.97e24 / n;
-		//	x = 3e6,
-		//		y = 0,
-		//		z = 0;
-		//	x_prev = x, y_prev = y, z_prev = z;
-		//	x_vprev = 0, y_vprev = 0, z_vprev = 0;
-		//}
-		//else {
-		//	id = num;
-		//	mass = 5.97e24 / n;
-		//	x = -3e6,
-		//		y = 0,
-		//		z = 0;
-		//	x_prev = x, y_prev = y, z_prev = z;
-		//	x_vprev = 0, y_vprev = 0, z_vprev = 0;
-		//}
 	}
 };
 #endif
