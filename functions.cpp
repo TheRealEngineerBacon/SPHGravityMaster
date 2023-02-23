@@ -16,7 +16,6 @@ constexpr int thread_n = 16;
 constexpr long double epsilon{ 1.4e6 };
 constexpr long double h = 1e6;
 constexpr long double eqstconst = 1;
-constexpr long double poly_index = 1;
 
 //Random long double generator.
 long double rand_ld(long double lower, long double upper)
@@ -86,7 +85,7 @@ void update_grav(Particle** array, int n, short tick)
 
 				den = (*array[j]).mass * W(dist, h);
 				den_T += den;
-				pres = eqstconst * pow(den, (1 + (1 / poly_index)));
+				pres = eqstconst * den * den;
 				pres_T += pres;
 
 				float t{};
@@ -106,16 +105,16 @@ void update_grav(Particle** array, int n, short tick)
 			{
 				den = (*array[j]).mass * (1.0 / (h * h * h * pi));
 				den_T += den;
-				//pres = eqstconst * pow(den, (1 + 1 / poly_index));
-				//pres_T += pres;
+				pres = eqstconst * den * den;
+				pres_T += pres;
 			}
 		}
 		(*array[i]).density = den_T;
 		(*array[i]).pressure = pres_T;
 
-		long double nu_x{ 0 };
-		long double nu_y{ 0 };
-		long double nu_z{ 0.0001 };
+		long double nu_x{ 0.0000 };
+		long double nu_y{ 0.0000 };
+		long double nu_z{ 0.0005 };
 		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x);
 		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y);
 		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z);
@@ -140,7 +139,7 @@ void update_fluid(Particle** array, int n, short tick) {
 				long double grad_y = ((j_y - i_y) / dist) * grad_T;
 				long double grad_z = ((j_z - i_z) / dist) * grad_T;
 
-				long double fluid_force = ((*array[i]).pressure / ((*array[i]).density * (*array[i]).density)) + ((*array[j]).pressure / ((*array[j]).density * (*array[j]).density));
+				long double fluid_force = ((*array[i]).pressure / ((*array[i]).density * (*array[j]).density)) + ((*array[j]).pressure / ((*array[j]).density * (*array[i]).density));
 				fluid_x += (*array[j]).mass * fluid_force * grad_x;
 				fluid_y += (*array[j]).mass * fluid_force * grad_y;
 				fluid_z += (*array[j]).mass * fluid_force * grad_z;
@@ -259,8 +258,13 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 
 		(*vertex_array[i]).setPosition(x_pos, y_pos);
 	}
+	
+
 	for (int i = 0; i < n; ++i) {
 		(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 3));
+		long double value = (*array[i]).density / (max_den + 15000);
+		sf::Color color{ static_cast<uint8_t>(value * 255), 0, static_cast<uint8_t>((1 - value) * 255), 255 };
+		(*vertex_array[i]).setFillColor(color);
 	}
 }
 

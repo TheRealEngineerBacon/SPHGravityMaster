@@ -103,6 +103,17 @@ int main()
 				if (event.key.code == sf::Keyboard::D) {
 					x_mov -= 1e6f;
 				}
+				if (event.key.code == sf::Keyboard::Space) {
+					if (pause_state == false) {
+						delta_t = 0.0;
+						pause_state = true;
+					}
+					else {
+						delta_t = 0.5;
+						pause_state = false;
+					}
+				}
+
 			}
 		}
 
