@@ -3,8 +3,6 @@
 
 #include "particle.h"									//#include and forwards here.
 #include <iostream>
-#include <sstream>
-#include <fstream>
 
 long double rand_ld(long double lower, long double upper);
 
@@ -23,9 +21,9 @@ public:
 		if (num != 0) {
 			id = num;
 			mass = (5.97e24 / n) + (rand_ld(-1, 1) * 2e22);
-			x = rand_ld(-1, 1) * 3e7,
-				y = rand_ld(-1, 1) * 3e7,
-				z = rand_ld(-1, 1) * 3e7;
+			x = rand_ld(-1, 1) * 5e7,
+				y = rand_ld(-1, 1) * 5e7,
+				z = rand_ld(-1, 1) * 5e7;
 			//3e7
 			x_prev = x, y_prev = y, z_prev = z;
 			x_vprev = 0, y_vprev = 0, z_vprev = 0;
