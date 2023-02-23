@@ -1,3 +1,4 @@
+#include "constants.h"
 #include "functions.h"
 #include "particle.h"
 #include <SFML/Graphics.hpp>
@@ -7,12 +8,6 @@
 
 int main()
 {
-	constexpr int n{ 128 };
-	constexpr int pixel_num = 512;
-	constexpr float delta_t = 0.5;
-	short tick{};
-	constexpr int compute_ratio = 200;
-
 	//Create the window and particles.
 	sf::RenderWindow window(sf::VideoMode(pixel_num, pixel_num), "Particle Simulation");
 	sf::View view = window.getDefaultView();
@@ -25,7 +20,7 @@ int main()
 	for (int i = 0; i < n; ++i) {
 		part_array[i] = new Particle(i, n);
 	}
-	update_accel(part_array, n, tick);
+	update_grav(part_array, n, tick);
 
 	//Create shapes via array pointer.
 	sf::CircleShape** vertex_array = new sf::CircleShape * [n];
@@ -35,10 +30,6 @@ int main()
 		(*vertex_array[i]).setPointCount(8);
 	}
 
-	/*float alpha{-1.218f}, beta{.783f}, gamma{.209f};*/
-	float alpha{}, beta{}, gamma{}, scale{};
-	int focus{};
-	float display_radius{ 1e8 };
 	//std::chrono::steady_clock::time_point t1, t2;
 	auto t1 = std::chrono::high_resolution_clock::now();
 	
@@ -100,6 +91,18 @@ int main()
 					}
 					std::cout << focus << '\n';
 				}
+				if (event.key.code == sf::Keyboard::W) {
+					y_mov -= 1e6f;
+				}
+				if (event.key.code == sf::Keyboard::S) {
+					y_mov += 1e6f;
+				}
+				if (event.key.code == sf::Keyboard::A) {
+					x_mov += 1e6f;
+				}
+				if (event.key.code == sf::Keyboard::D) {
+					x_mov -= 1e6f;
+				}
 			}
 		}
 
@@ -107,13 +110,14 @@ int main()
 		window.clear(sf::Color::Black);
 
 		update_pos(part_array, n, delta_t);
-		update_accel(part_array, n, tick);
+		update_grav(part_array, n, tick);
+		update_fluid(part_array, n, tick);
 		update_vel(part_array, n, delta_t);
 
 		if (tick % compute_ratio == 0) {
 
 			//Rendering functions.
-			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick, focus);
+			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick, focus, x_mov, y_mov);
 			for (int i = 0; i < n; ++i) {
 				window.draw((*vertex_array[i]));
 			}
@@ -130,7 +134,6 @@ int main()
 		}
 
 		tick += 1;
-
 	}
 	delete[] part_array;
 	delete[] vertex_array;
