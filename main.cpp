@@ -124,6 +124,7 @@ int main()
 		update_grav(part_array, n, tick);
 		update_fluid(part_array, n, tick);
 		update_vel(part_array, n, delta_t);
+		update_temp(part_array, n, delta_t);
 
 		if (tick % compute_ratio == 0) {
 
@@ -133,6 +134,10 @@ int main()
 				window.draw((*vertex_array[i]));
 			}
 			window.display();
+		}
+
+		if (tick % 8000 == 0) {
+			std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
 		}
 
 		int image_num{};
