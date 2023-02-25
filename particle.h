@@ -13,7 +13,7 @@ public:
 	long double x{}, x_prev{}, x_v{}, x_vprev{}, x_accel{}, x_accelprev{};
 	long double y{}, y_prev{}, y_v{}, y_vprev{}, y_accel{}, y_accelprev{};
 	long double z{}, z_prev{}, z_v{}, z_vprev{}, z_accel{}, z_accelprev{};
-	long double density{}, pressure{}, temp_0{ 80 }, temp_f{ 80 };
+	long double density{}, pressure{}, temp_0{ 20 }, temp_f{ 20 };
 
 	Particle(int num, int n)
 	{
