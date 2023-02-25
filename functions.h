@@ -8,6 +8,10 @@ long double rand_ld(long double lower, long double upper);
 
 long double W(long double dist, long double h);
 
+long double grad_W(long double dist, long double h);
+
+void update_temp(Particle** array, int n, float delta_t);
+
 void update_grav(Particle** array, int n, short tick);
 
 void update_fluid(Particle** array, int n, short tick);

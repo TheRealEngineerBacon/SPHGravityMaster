@@ -15,7 +15,7 @@ constexpr int thread_n = 16;
 //SPH constants
 constexpr long double epsilon{ 1.4e6 };
 constexpr long double h = 1e6;
-constexpr long double eqstconst = 1;
+constexpr long double eqstconst = 0.1;
 
 //Random long double generator.
 long double rand_ld(long double lower, long double upper)
@@ -48,28 +48,57 @@ long double grad_W(long double dist, long double h) {
 	const long double h1 = 1.0L / h;
 	const long double q = dist * h1;
 	if (q > 2) {
-		return -0.0L;
+		return 0.0L;
 	}
 	else if (q >= 1) {
 		long double sigma = 0.75 * one_over_pi * h1 * h1 * h1;
 		long double inner = 2.0 - q;
-		return -sigma * inner * inner;
+		return sigma * inner * inner;
 	}
 	else if (q >= 0) {
 		long double sigma = one_over_pi * h1 * h1 * h1;
-		return -sigma * (-3 * q * (1 - 0.75 * q));
+		return sigma * (-3 * q * (1 - 0.75 * q));
 	}
 	//return (-2 / (h * h * h * h * h * pi_threehalf)) * exp(-(dist * dist) / (h * h));
 }
 
+void update_temp(Particle** array, int n, float delta_t) {
+	#pragma omp parallel for num_threads(thread_n)
+	for (int i = 0; i < n; ++i) {
+		(*array[i]).temp_0 = (*array[i]).temp_f;
+		long double delta_temp{};
+		
+		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+		for (int j = 0; j < n; ++j)
+		{
+			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
+			if (j != i)
+			{
+				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+				long double temp_diff{ (*array[j]).temp_f - (*array[i]).temp_f };
+				long double gradient{ grad_W(dist, h) };
+				long double mass_density{ (*array[j]).mass / (*array[j]).density };
+				delta_temp += mass_density * temp_diff * gradient;
+			}
+		}
+		long double conduc{ 1000 };
+		long double c_p{ 10 };
+		if (i != 0) {
+			(*array[i]).temp_f += ((2 * conduc)/((*array[i]).density * c_p)) * delta_temp * delta_t;
+		}
+		else {
+			(*array[i]).temp_f = 240;
+		}
+	}
+}
+
 void update_grav(Particle** array, int n, short tick)
 {
-	//Computation of gravitation forces, density, and fluid pressure.
+	//Computation of gravitation forces and density summation.
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i)
 	{
-		long double den{}, pres{}, den_T{}, pres_T{};
-		long double a_x{}, a_y{}, a_z{};
+		long double a_x{}, a_y{}, a_z{}, den_T{};
 		array[i]->x_accelprev = array[i]->x_accel;
 		array[i]->y_accelprev = array[i]->y_accel;
 		array[i]->z_accelprev = array[i]->z_accel;
@@ -83,10 +112,7 @@ void update_grav(Particle** array, int n, short tick)
 			{
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
 
-				den = (*array[j]).mass * W(dist, h);
-				den_T += den;
-				pres = eqstconst * den * den;
-				pres_T += pres;
+				den_T += (*array[j]).mass * W(dist, h);
 
 				float t{};
 				if (dist <= epsilon) {
@@ -95,26 +121,22 @@ void update_grav(Particle** array, int n, short tick)
 				else {
 					t = 0.0f;
 				}
-				long double total_accel = G * ((*array[j]).mass / ((dist * dist * (1 - t)) + (t * epsilon * epsilon)));
-				a_x += total_accel * ((j_x - i_x) / dist);
-				a_y += total_accel * ((j_y - i_y) / dist);
-				a_z += total_accel * ((j_z - i_z) / dist);
+				long double total_accel = -G * ((*array[j]).mass / ((dist * dist * (1 - t)) + (t * epsilon * epsilon)));
+				a_x += total_accel * ((i_x - j_x) / dist);
+				a_y += total_accel * ((i_y - j_y) / dist);
+				a_z += total_accel * ((i_z - j_z) / dist);
 
 			}
 			else
 			{
-				den = (*array[j]).mass * (1.0 / (h * h * h * pi));
-				den_T += den;
-				pres = eqstconst * den * den;
-				pres_T += pres;
+				den_T += (*array[j]).mass * (1.0 / (h * h * h * pi));
 			}
 		}
 		(*array[i]).density = den_T;
-		(*array[i]).pressure = pres_T;
 
-		long double nu_x{ 0.0000 };
-		long double nu_y{ 0.0000 };
-		long double nu_z{ 0.0005 };
+		long double nu_x{ 0.0002 };
+		long double nu_y{ 0.0002 };
+		long double nu_z{ 0.0002 };
 		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x);
 		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y);
 		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z);
@@ -122,7 +144,13 @@ void update_grav(Particle** array, int n, short tick)
 }
 
 void update_fluid(Particle** array, int n, short tick) {
-	//Computation of fluid forces.
+	//Computation of fluid pressures from density values.
+	#pragma omp parallel for num_threads(thread_n)
+	for (int i = 0; i < n; ++i) {
+		(*array[i]).pressure = eqstconst * (*array[i]).density * (*array[i]).density;
+	}
+
+	//Calculate acceleration due to fluid pressure.
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i)
 	{
@@ -131,15 +159,16 @@ void update_fluid(Particle** array, int n, short tick) {
 
 		for (int j = 0; j < n; ++j) {
 			if (j != i) {
+				long double j_press = eqstconst * (*array[j]).density * (*array[j]).density;
 				long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
 
 				long double grad_T = grad_W(dist, h);
-				long double grad_x = ((j_x - i_x) / dist) * grad_T;
-				long double grad_y = ((j_y - i_y) / dist) * grad_T;
-				long double grad_z = ((j_z - i_z) / dist) * grad_T;
+				long double grad_x = ((i_x - j_x) / dist) * grad_T;
+				long double grad_y = ((i_y - j_y) / dist) * grad_T;
+				long double grad_z = ((i_z - j_z) / dist) * grad_T;
 
-				long double fluid_force = ((*array[i]).pressure / ((*array[i]).density * (*array[j]).density)) + ((*array[j]).pressure / ((*array[j]).density * (*array[i]).density));
+				long double fluid_force = ((*array[i]).pressure / ((*array[i]).density * (*array[i]).density)) + ((*array[j]).pressure / ((*array[j]).density * (*array[j]).density));
 				fluid_x += (*array[j]).mass * fluid_force * grad_x;
 				fluid_y += (*array[j]).mass * fluid_force * grad_y;
 				fluid_z += (*array[j]).mass * fluid_force * grad_z;
@@ -180,23 +209,23 @@ void print_Data(Particle** array, int n, int focus) {
 	long double E_pot{};
 	long double E_kin{};
 	long double E_total{};
-	for (int i = 0; i < n; ++i)
-	{
-		long double vel = sqrt(pow(abs((*array[i]).x_v), 2) + pow(abs((*array[i]).y_v), 2) + pow(abs((*array[i]).z_v), 2));
-		E_kin += 0.5 * (*array[i]).mass * pow(vel, 2);
+	//for (int i = 0; i < n; ++i)
+	//{
+	//	long double vel = sqrt(pow(abs((*array[i]).x_v), 2) + pow(abs((*array[i]).y_v), 2) + pow(abs((*array[i]).z_v), 2));
+	//	E_kin += 0.5 * (*array[i]).mass * pow(vel, 2);
 
-		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
-		for (int j = i + 1; j < n; ++j)
-		{
-			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
-			{
-				long double dist = sqrt(pow(abs(j_x - i_x), 2) + pow(abs(j_y - i_y), 2) + pow(abs(j_z - i_z), 2));
-				E_pot += -G * (((*array[i]).mass * (*array[j]).mass) / dist);
-			}
-		}
-	}
-	E_total = E_pot + E_kin;
-	std::cout << std::setprecision(8) << E_total << '\n';
+	//	long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+	//	for (int j = i + 1; j < n; ++j)
+	//	{
+	//		long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
+	//		{
+	//			long double dist = sqrt(pow(abs(j_x - i_x), 2) + pow(abs(j_y - i_y), 2) + pow(abs(j_z - i_z), 2));
+	//			E_pot += -G * (((*array[i]).mass * (*array[j]).mass) / dist);
+	//		}
+	//	}
+	//}
+	//E_total = E_pot + E_kin;
+	std::cout << std::setprecision(12) << (*array[focus]).density << '\n';
 }
 
 void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick, int focus, float x_mov, float y_mov) {
@@ -234,19 +263,20 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 
 	long double max_den{};
 	for (int i = 0; i < n; ++i) {
-		x_raw = static_cast<float>((*array[i]).x) - cenx;
-		y_raw = static_cast<float>((*array[i]).y) - ceny;
-		z_raw = static_cast<float>((*array[i]).z) - cenz;
-
 		if ((*array[i]).density > max_den) {
 			max_den = (*array[i]).density;
 		}
+
+		x_raw = static_cast<float>((*array[i]).x) - cenx;
+		y_raw = static_cast<float>((*array[i]).y) - ceny;
+		z_raw = static_cast<float>((*array[i]).z) - cenz;
 
 		//Rotation then orthographic projection.
 		x_adj = x_raw * (cos_b * cos_g)
 			+ y_raw * ((sin_a * sin_b * cos_g) - (cos_a * sin_g))
 			+ z_raw * ((cos_a * sin_b * cos_g) + (sin_a * sin_g))
 			+ x_mov;
+
 
 		y_adj = x_raw * (cos_b * sin_g)
 			+ y_raw * ((sin_a * sin_b * sin_g) + (cos_a * cos_g))
@@ -258,12 +288,17 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 
 		(*vertex_array[i]).setPosition(x_pos, y_pos);
 	}
-	
 
 	for (int i = 0; i < n; ++i) {
-		(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 3));
-		long double value = (*array[i]).density / (max_den + 15000);
-		sf::Color color{ static_cast<uint8_t>(value * 255), 0, static_cast<uint8_t>((1 - value) * 255), 255 };
+		if (i != focus) {
+			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 2));
+		}
+		else {
+			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 4));
+		}
+		
+		//long double value = abs(((*array[i]).density - min_den) / (max_den - min_den));
+		sf::Color color{ static_cast<uint8_t>((*array[i]).temp_0), 0, 0, 255 };
 		(*vertex_array[i]).setFillColor(color);
 	}
 }
