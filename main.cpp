@@ -20,7 +20,7 @@ int main()
 	for (int i = 0; i < n; ++i) {
 		part_array[i] = new Particle(i, n);
 	}
-	update_grav(part_array, n, tick);
+	update_grav(part_array, n, tick, friction);
 
 	//Create shapes via array pointer.
 	sf::CircleShape** vertex_array = new sf::CircleShape * [n];
@@ -113,6 +113,16 @@ int main()
 						pause_state = false;
 					}
 				}
+				if (event.key.code == sf::Keyboard::F) {
+					if (friction == false) {
+						friction = true;
+						std::cout << friction << '\n';
+					}
+					else {
+						friction = false;
+						std::cout << friction << '\n';
+					}
+				}
 
 			}
 		}
@@ -121,15 +131,18 @@ int main()
 		window.clear(sf::Color::Black);
 
 		update_pos(part_array, n, delta_t);
-		update_grav(part_array, n, tick);
+		center_pos = find_centermass(part_array, n);
+		update_grav(part_array, n, tick, friction);
 		update_fluid(part_array, n, tick);
 		update_vel(part_array, n, delta_t);
-		update_temp(part_array, n, delta_t);
+		update_temp(part_array, n, delta_t, center_pos);
 
 		if (tick % compute_ratio == 0) {
 
 			//Rendering functions.
-			update_vertex_pos(part_array, vertex_array, n, pixel_num, display_radius, alpha, beta, gamma, tick, focus, x_mov, y_mov);
+			update_vertex_pos(part_array, vertex_array, n, pixel_num, 
+				display_radius, alpha, beta, gamma, tick, focus, x_mov, y_mov,
+				center_pos);
 			for (int i = 0; i < n; ++i) {
 				window.draw((*vertex_array[i]));
 			}
@@ -140,7 +153,6 @@ int main()
 			std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
 		}
 
-		int image_num{};
 		if (tick == SHRT_MAX) {
 			/*auto t2 = std::chrono::high_resolution_clock::now();
 			auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);

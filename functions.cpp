@@ -1,6 +1,7 @@
 #include "functions.h"
 #include "particle.h"
 #include <SFML/Graphics.hpp>
+#include <array>
 #include <random>
 #include <iomanip>
 #include <omp.h>
@@ -15,17 +16,10 @@ constexpr int thread_n = 16;
 //SPH constants
 constexpr long double epsilon{ 1.4e6 };
 constexpr long double h = 1e6;
-constexpr long double eqstconst = 0.1;
+constexpr long double eqstconst = .01;
 
-//Random long double generator.
-long double rand_ld(long double lower, long double upper)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<long double> dist(lower, upper);
-	return dist(gen);
-}
 
+//Simulation functions
 long double W(long double dist, long double h) {
 	const long double h1 = 1.0L / h;
 	const long double q = dist * h1;
@@ -40,6 +34,10 @@ long double W(long double dist, long double h) {
 	else if (q >= 0) {
 		const long double sigma = one_over_pi * h1 * h1 * h1;
 		return sigma * (1 - (1.5 * q * q) + (0.75 * q * q * q));
+	}
+	else {
+		std::cout << "Error: Function W: Negative q value encountered." << '\n';
+		return 0.0L;
 	}
 	//return (1.0 / (h * h * h * pi_threehalf)) * exp(-(dist * dist) / (h * h));
 }
@@ -59,40 +57,41 @@ long double grad_W(long double dist, long double h) {
 		long double sigma = one_over_pi * h1 * h1 * h1;
 		return sigma * (-3 * q * (1 - 0.75 * q));
 	}
+	else {
+		std::cout << "Error: Function grad_W: Negative q value encountered." << '\n';
+		return 0.0L;
+	}
 	//return (-2 / (h * h * h * h * h * pi_threehalf)) * exp(-(dist * dist) / (h * h));
 }
 
-void update_temp(Particle** array, int n, float delta_t) {
+void update_pos(Particle** array, int n, float delta_t) {
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i) {
-		(*array[i]).temp_0 = (*array[i]).temp_f;
-		long double delta_temp{};
-		
-		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
-		for (int j = 0; j < n; ++j)
-		{
-			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
-			if (j != i)
-			{
-				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-				long double temp_diff{ (*array[j]).temp_f - (*array[i]).temp_f };
-				long double gradient{ grad_W(dist, h) };
-				long double mass_density{ (*array[j]).mass / (*array[j]).density };
-				delta_temp += mass_density * temp_diff * gradient;
-			}
-		}
-		long double conduc{ 10000 };
-		long double c_p{ 1 };
-		if (i != 0) {
-			(*array[i]).temp_f += ((2 * conduc)/((*array[i]).density * c_p)) * delta_temp * delta_t;
-		}
-		else {
-			(*array[i]).temp_f = 240;
-		}
+		(*array[i]).x = (*array[i]).x_prev + ((*array[i]).x_v * delta_t) + (0.5 * (*array[i]).x_accel * delta_t * delta_t);
+		(*array[i]).y = (*array[i]).y_prev + ((*array[i]).y_v * delta_t) + (0.5 * (*array[i]).y_accel * delta_t * delta_t);
+		(*array[i]).z = (*array[i]).z_prev + ((*array[i]).z_v * delta_t) + (0.5 * (*array[i]).z_accel * delta_t * delta_t);
+		(*array[i]).x_prev = (*array[i]).x;
+		(*array[i]).y_prev = (*array[i]).y;
+		(*array[i]).z_prev = (*array[i]).z;
 	}
 }
 
-void update_grav(Particle** array, int n, short tick)
+std::array<long double, 3> find_centermass(Particle** array, int n) {
+	std::array<long double, 3> temp = { 0, 1, 2};
+	long double temp_x{}, temp_y{}, temp_z{}, mass_total{};
+	for (int i = 0; i < n; ++i) {
+		mass_total += (*array[i]).mass;
+		temp_x += (*array[i]).mass * (*array[i]).x;
+		temp_y += (*array[i]).mass * (*array[i]).y;
+		temp_z += (*array[i]).mass * (*array[i]).z;
+	}
+	temp[0] = temp_x / mass_total;
+	temp[1] = temp_y / mass_total;
+	temp[2] = temp_z / mass_total;
+	return temp;
+}
+
+void update_grav(Particle** array, int n, short tick, bool friction)
 {
 	//Computation of gravitation forces and density summation.
 	#pragma omp parallel for num_threads(thread_n)
@@ -134,12 +133,21 @@ void update_grav(Particle** array, int n, short tick)
 		}
 		(*array[i]).density = den_T;
 
-		long double nu_x{ 0.0000015 };
-		long double nu_y{ 0.0000015 };
-		long double nu_z{ 0.0004 };
-		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x);
-		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y);
-		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z);
+		long double nu_x{}, nu_y{}, nu_z{};
+		if (friction == true) {
+			nu_x = 0.001; 
+			nu_y = 0.001; 
+			nu_z = 0.001;
+		}
+		else {
+			nu_x = 0.0; 
+			nu_y = 0.0; 
+			nu_z = 0.0;
+		}
+		long double b = 5e-4;
+		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x) + (-b * ((*array[i]).temp_f - 100) * a_x);
+		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y) + (-b * ((*array[i]).temp_f - 100) * a_y);
+		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z) + (-b * ((*array[i]).temp_f - 100) * a_z);
 	}
 }
 
@@ -193,18 +201,43 @@ void update_vel(Particle** part_array, int n, float delta_t) {
 	}
 }
 
-void update_pos(Particle** array, int n, float delta_t) {
+void update_temp(Particle** array, int n, float delta_t, std::array<long double, 3> center_pos) {
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i) {
-		(*array[i]).x = (*array[i]).x_prev + ((*array[i]).x_v * delta_t) + (0.5 * (*array[i]).x_accel * delta_t * delta_t);
-		(*array[i]).y = (*array[i]).y_prev + ((*array[i]).y_v * delta_t) + (0.5 * (*array[i]).y_accel * delta_t * delta_t);
-		(*array[i]).z = (*array[i]).z_prev + ((*array[i]).z_v * delta_t) + (0.5 * (*array[i]).z_accel * delta_t * delta_t);
-		(*array[i]).x_prev = (*array[i]).x;
-		(*array[i]).y_prev = (*array[i]).y;
-		(*array[i]).z_prev = (*array[i]).z;
+		(*array[i]).temp_0 = (*array[i]).temp_f;
+		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+		
+		long double dist_from_center = sqrt((center_pos[0] - i_x) * (center_pos[0] - i_x)
+			+ (center_pos[1] - i_y) * (center_pos[1] - i_y)
+			+ (center_pos[2] - i_z) * (center_pos[2] - i_z));
+
+		long double delta_temp{};
+		for (int j = 0; j < n; ++j)
+		{
+			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
+			if (j != i)
+			{
+				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+				long double temp_diff{ (*array[j]).temp_f - (*array[i]).temp_f };
+				long double gradient{ grad_W(dist, h) };
+				long double mass_density{ (*array[j]).mass / (*array[j]).density };
+				delta_temp += mass_density * temp_diff * gradient;
+			}
+		}
+		constexpr long double conduc{ 100 };
+		constexpr long double c_p{ 10 };
+		if (dist_from_center > (5.5 * h)) {
+			(*array[i]).temp_f  = 0;
+		} else if (dist_from_center > (2 * h)) {
+			(*array[i]).temp_f += ((2 * conduc)/((*array[i]).density * c_p)) * delta_temp * delta_t;
+		} else if (dist_from_center <= (2 * h)) {
+			(*array[i]).temp_f = 240;
+		}
 	}
 }
 
+
+//Utility functions
 void print_Data(Particle** array, int n, int focus) {
 	long double E_pot{};
 	long double E_kin{};
@@ -228,7 +261,43 @@ void print_Data(Particle** array, int n, int focus) {
 	std::cout << std::setprecision(12) << (*array[focus]).density << '\n';
 }
 
-void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, float display_radius, float alpha, float beta, float gamma, short tick, int focus, float x_mov, float y_mov) {
+void check_Singularity(Particle** array, int n) {
+	/* 
+	This function checks for singularities, events in which the gravitiational forces overcomes the fluid force.
+	The result is two particles beings sucked together, thus occupying the same location in space. This is not desirable.
+	*/
+	bool singularity = false;
+	for (int i = 0; i < n; ++i) {
+		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
+
+		for (int j = i+1; j < n; ++j) {
+			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
+			long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
+			if (dist < 1e5) {
+				singularity = true;
+			}
+		}
+	}
+	if (singularity == true) {
+		std::cout << "Warning: Singularity event detected." << '\n';
+	}
+}
+
+long double rand_ld(long double lower, long double upper)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<long double> dist(lower, upper);
+	return dist(gen);
+}
+
+
+//Render functions
+void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, int pixel_num, 
+	float display_radius, float alpha, 
+	float beta, float gamma, short tick, 
+	int focus, float x_mov, float y_mov,
+	std::array<long double, 3> center_pos) {
 	float x_raw{}, y_raw{}, z_raw{};
 	float x_pos{}, y_pos{}, x_adj{}, y_adj{};
 	const float sin_a = std::sin(alpha);
@@ -241,42 +310,21 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 	const float scale = display_radius / pixel_num;
 	const float middle = static_cast<float>(pixel_num) / 2;
 
-	long double mass_x{}, mass_y{}, mass_z{}, mass_total{};
-	for (int i = 0; i < n; ++i) {
-		mass_total += (*array[i]).mass;
-		mass_x = (*array[i]).mass * (*array[i]).x;
-		mass_y = (*array[i]).mass * (*array[i]).y;
-		mass_z = (*array[i]).mass * (*array[i]).z;
-	}
-
-	//Shifts coordinates to focus on specific particle.
-	//float cenx, ceny, cenz;
-	//cenx = static_cast<float>((*array[focus]).x);
-	//ceny = static_cast<float>((*array[focus]).y);
-	//cenz = static_cast<float>((*array[focus]).z);
-
-	//Shifts coordinates to focus on center of mass.
-	float cenx, ceny, cenz;
-	cenx = static_cast<float>(mass_x / mass_total);
-	ceny = static_cast<float>(mass_y / mass_total);
-	cenz = static_cast<float>(mass_z / mass_total);
-
 	long double max_den{};
 	for (int i = 0; i < n; ++i) {
 		if ((*array[i]).density > max_den) {
 			max_den = (*array[i]).density;
 		}
 
-		x_raw = static_cast<float>((*array[i]).x) - cenx;
-		y_raw = static_cast<float>((*array[i]).y) - ceny;
-		z_raw = static_cast<float>((*array[i]).z) - cenz;
+		x_raw = static_cast<float>((*array[i]).x - center_pos[0]);
+		y_raw = static_cast<float>((*array[i]).y - center_pos[1]);
+		z_raw = static_cast<float>((*array[i]).z - center_pos[2]);
 
 		//Rotation then orthographic projection.
 		x_adj = x_raw * (cos_b * cos_g)
 			+ y_raw * ((sin_a * sin_b * cos_g) - (cos_a * sin_g))
 			+ z_raw * ((cos_a * sin_b * cos_g) + (sin_a * sin_g))
 			+ x_mov;
-
 
 		y_adj = x_raw * (cos_b * sin_g)
 			+ y_raw * ((sin_a * sin_b * sin_g) + (cos_a * cos_g))
@@ -303,24 +351,7 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 	}
 }
 
-void check_Singularity(Particle** array, int n) {
-	/* 
-	This function checks for singularities, events in which the gravitiational forces overcomes the fluid force.
-	The result is two particles beings sucked together, thus occupying the same location in space. This is not desirable.
-	*/
-	bool singularity = false;
-	for (int i = 0; i < n; ++i) {
-		long double i_x{ (*array[i]).x }, i_y{ (*array[i]).y }, i_z{ (*array[i]).z };
 
-		for (int j = i+1; j < n; ++j) {
-			long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
-			long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
-			if (dist < 1e5) {
-				singularity = true;
-			}
-		}
-	}
-	if (singularity == true) {
-		std::cout << "Warning: Singularity event detected." << '\n';
-	}
-}
+
+
+
