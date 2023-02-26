@@ -20,9 +20,9 @@ public:
 		if (num != 0) {
 			id = num;
 			mass = ((long double)5.97e24 / n);
-			x = rand_ld(-1, 1) * 5e7,
-				y = rand_ld(-1, 1) * 5e7,
-				z = rand_ld(-1, 1) * 5e7;
+			x = rand_ld(-1, 1) * 4e7,
+				y = rand_ld(-1, 1) * 4e7,
+				z = rand_ld(-1, 1) * 4e7;
 			x_prev = x, y_prev = y, z_prev = z;
 			x_vprev = 0, y_vprev = 0, z_vprev = 0;
 			int vel = 500;
