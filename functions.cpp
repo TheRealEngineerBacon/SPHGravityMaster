@@ -81,8 +81,8 @@ void update_temp(Particle** array, int n, float delta_t) {
 				delta_temp += mass_density * temp_diff * gradient;
 			}
 		}
-		long double conduc{ 1000 };
-		long double c_p{ 10 };
+		long double conduc{ 10000 };
+		long double c_p{ 1 };
 		if (i != 0) {
 			(*array[i]).temp_f += ((2 * conduc)/((*array[i]).density * c_p)) * delta_temp * delta_t;
 		}
@@ -134,9 +134,9 @@ void update_grav(Particle** array, int n, short tick)
 		}
 		(*array[i]).density = den_T;
 
-		long double nu_x{ 0.0002 };
-		long double nu_y{ 0.0002 };
-		long double nu_z{ 0.0002 };
+		long double nu_x{ 0.0000015 };
+		long double nu_y{ 0.0000015 };
+		long double nu_z{ 0.0004 };
 		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x);
 		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y);
 		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z);
@@ -291,14 +291,14 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 
 	for (int i = 0; i < n; ++i) {
 		if (i != focus) {
-			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 2));
+			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / (max_den + 1)) * 2));
 		}
 		else {
 			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 4));
 		}
 		
 		//long double value = abs(((*array[i]).density - min_den) / (max_den - min_den));
-		sf::Color color{ static_cast<uint8_t>((*array[i]).temp_0), 0, 0, 255 };
+		sf::Color color{ static_cast<uint8_t>((*array[i]).temp_0), 0, static_cast<uint8_t>(255 - (*array[i]).temp_0), 255 };
 		(*vertex_array[i]).setFillColor(color);
 	}
 }
