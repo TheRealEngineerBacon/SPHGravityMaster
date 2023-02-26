@@ -12,7 +12,7 @@ short tick{};
 
 
 //Render Constants
-constexpr int pixel_num = 512;
+constexpr int pixel_num = 768;
 float alpha{}, beta{}, gamma{}, scale{};
 int focus{};
 float center_mass{}, x_mov, y_mov;
