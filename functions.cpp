@@ -144,10 +144,10 @@ void update_grav(Particle** array, int n, short tick, bool friction)
 			nu_y = 0.0; 
 			nu_z = 0.0;
 		}
-		long double b = 5e-4;
-		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x) + (-b * ((*array[i]).temp_f - 100) * a_x);
-		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y) + (-b * ((*array[i]).temp_f - 100) * a_y);
-		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z) + (-b * ((*array[i]).temp_f - 100) * a_z);
+		long double b = 1e-3;
+		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x) + (-b * ((*array[i]).temp_f - 130) * a_x);
+		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y) + (-b * ((*array[i]).temp_f - 130) * a_y);
+		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z) + (-b * ((*array[i]).temp_f - 130) * a_z);
 	}
 }
 
@@ -167,7 +167,6 @@ void update_fluid(Particle** array, int n, short tick) {
 
 		for (int j = 0; j < n; ++j) {
 			if (j != i) {
-				long double j_press = eqstconst * (*array[j]).density * (*array[j]).density;
 				long double j_x{ (*array[j]).x }, j_y{ (*array[j]).y }, j_z{ (*array[j]).z };
 				long double dist = sqrt((j_x - i_x) * (j_x - i_x) + (j_y - i_y) * (j_y - i_y) + (j_z - i_z) * (j_z - i_z));
 
@@ -225,9 +224,9 @@ void update_temp(Particle** array, int n, float delta_t, std::array<long double,
 			}
 		}
 		constexpr long double conduc{ 100 };
-		constexpr long double c_p{ 10 };
-		if (dist_from_center > (5.5 * h)) {
-			(*array[i]).temp_f  = 0;
+		constexpr long double c_p{ 100 };
+		if (dist_from_center > (6 * h)) {
+			(*array[i]).temp_f  = 40;
 		} else if (dist_from_center > (2 * h)) {
 			(*array[i]).temp_f += ((2 * conduc)/((*array[i]).density * c_p)) * delta_temp * delta_t;
 		} else if (dist_from_center <= (2 * h)) {
