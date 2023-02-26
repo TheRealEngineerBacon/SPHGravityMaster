@@ -6,7 +6,7 @@
 
 
 //Simulation Constants
-constexpr int n{ 192 };
+constexpr int n{ 256 };
 constexpr int compute_ratio = 200;
 std::array<long double, 3> center_pos{};
 float delta_t = 0.5;
@@ -15,7 +15,7 @@ bool friction{ false };
 
 
 //Render Constants
-constexpr int pixel_num = 768;
+constexpr int pixel_num = 512;
 float alpha{}, beta{}, gamma{}, scale{};
 int focus{};
 float center_mass{}, x_mov, y_mov;
