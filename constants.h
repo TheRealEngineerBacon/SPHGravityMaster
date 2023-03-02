@@ -8,10 +8,12 @@
 //Simulation Constants
 constexpr int n{ 256 };
 constexpr int compute_ratio = 200;
-std::array<long double, 3> center_pos{};
+std::array<long double, 6> center_pos{};
 float delta_t = 0.5;
 short tick{};
 bool friction{ false };
+constexpr long double h = 1e6;
+int grid_size = 37;
 
 
 //Render Constants

@@ -32,6 +32,9 @@
     <ClInclude Include="constants.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="SmoothGrid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="SPH.py">

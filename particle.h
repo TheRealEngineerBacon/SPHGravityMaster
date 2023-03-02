@@ -14,6 +14,8 @@ public:
 	long double y{}, y_prev{}, y_v{}, y_vprev{}, y_accel{}, y_accelprev{};
 	long double z{}, z_prev{}, z_v{}, z_vprev{}, z_accel{}, z_accelprev{};
 	long double density{}, pressure{}, temp_0{ 0 }, temp_f{ 0 };
+	int ind_x{}, ind_y{}, ind_z{};
+	bool on_grid{ false };
 
 	Particle(int num, int n)
 	{
@@ -40,7 +42,7 @@ public:
 			}
 		}
 		else {
-			id = num;
+			id = 0;
 			mass = (5.97e24 / n);
 			x = 0,
 				y = 0,
