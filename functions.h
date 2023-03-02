@@ -12,7 +12,7 @@ long double grad_W(long double dist, long double h);
 
 void update_pos(Particle** part_array, int n, float delta_t);
 
-std::array<long double, 3> find_centermass(Particle** array, int n);
+std::array<long double, 6> find_centermass(Particle** array, int n, long double h);
 
 void update_grav(Particle** array, int n, short tick, bool friction);
 
@@ -20,7 +20,7 @@ void update_fluid(Particle** array, int n, short tick);
 
 void update_vel(Particle** part_array, int n, float delta_t);
 
-void update_temp(Particle** array, int n, float delta_t, std::array<long double, 3> center_pos);
+void update_temp(Particle** array, int n, float delta_t, std::array<long double, 6> center_pos);
 
 
 //Utility functions
@@ -36,6 +36,6 @@ void update_vertex_pos(Particle** part_array, sf::CircleShape** vertex_array, in
 	float display_radius, float alpha, 
 	float beta, float gamma, short tick, 
 	int focus, float x_mov, float y_mov,
-	std::array<long double, 3> center_pos);
+	std::array<long double, 6> center_pos);
 
 #endif

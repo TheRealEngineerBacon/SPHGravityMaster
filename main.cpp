@@ -1,8 +1,8 @@
 #include "constants.h"
 #include "functions.h"
 #include "particle.h"
+#include "SmoothGrid.h"
 #include <SFML/Graphics.hpp>
-#include <SFML/Window.hpp>
 #include <iostream>
 #include <chrono>
 
@@ -16,11 +16,15 @@ int main()
 	//window.setFramerateLimit(60);
 	//window.setVerticalSyncEnabled(true);
 
+	//Create particles as an array of pointers.
 	Particle** part_array = new Particle * [n];
 	for (int i = 0; i < n; ++i) {
 		part_array[i] = new Particle(i, n);
 	}
 	update_grav(part_array, n, tick, friction);
+
+	//Create spatial partitioning grid for faster fluid computation.
+	SmoothGrid grid = SmoothGrid(grid_size, h);
 
 	//Create shapes via array pointer.
 	sf::CircleShape** vertex_array = new sf::CircleShape * [n];
@@ -33,6 +37,8 @@ int main()
 	//std::chrono::steady_clock::time_point t1, t2;
 	auto t1 = std::chrono::high_resolution_clock::now();
 	
+	std::vector<int> a;
+
 	//Create main window loop.
 	while (window.isOpen()) {
 		window.setKeyRepeatEnabled(true);
@@ -131,11 +137,20 @@ int main()
 		window.clear(sf::Color::Black);
 
 		update_pos(part_array, n, delta_t);
-		center_pos = find_centermass(part_array, n);
+		center_pos = find_centermass(part_array, n, h);
+		grid.on_grid(part_array, n, grid_size, h, center_pos);
 		update_grav(part_array, n, tick, friction);
 		update_fluid(part_array, n, tick);
 		update_vel(part_array, n, delta_t);
 		update_temp(part_array, n, delta_t, center_pos);
+
+		if (tick % 8000 == 0) {
+			//std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
+			std::cout << (*part_array[focus]).ind_x << ", " << (*part_array[focus]).ind_y << ", " << (*part_array[focus]).ind_z << '\n';
+			a.clear();
+			a = grid.return_surr(part_array, focus, grid_size);
+			std::cout << a.size() << '\n';
+		}
 
 		if (tick % compute_ratio == 0) {
 
@@ -147,10 +162,6 @@ int main()
 				window.draw((*vertex_array[i]));
 			}
 			window.display();
-		}
-
-		if (tick % 8000 == 0) {
-			std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
 		}
 
 		if (tick == SHRT_MAX) {

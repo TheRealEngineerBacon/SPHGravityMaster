@@ -76,18 +76,32 @@ void update_pos(Particle** array, int n, float delta_t) {
 	}
 }
 
-std::array<long double, 3> find_centermass(Particle** array, int n) {
-	std::array<long double, 3> temp = { 0, 1, 2};
+std::array<long double, 6> find_centermass(Particle** array, int n, long double h) {
+	std::array<long double, 6> temp;
 	long double temp_x{}, temp_y{}, temp_z{}, mass_total{};
+	long double x_absmax{}, y_absmax{}, z_absmax{};
 	for (int i = 0; i < n; ++i) {
+		long double x_abs{}, y_abs{}, z_abs{};
 		mass_total += (*array[i]).mass;
 		temp_x += (*array[i]).mass * (*array[i]).x;
 		temp_y += (*array[i]).mass * (*array[i]).y;
 		temp_z += (*array[i]).mass * (*array[i]).z;
+		x_abs = std::abs((*array[i]).x);
+		y_abs = std::abs((*array[i]).y);
+		z_abs = std::abs((*array[i]).z);
+		if (x_abs > x_absmax)
+			x_absmax = x_abs;
+		if (y_abs > y_absmax)
+			y_absmax = y_abs;
+		if (z_abs > z_absmax)
+			z_absmax = z_abs;
 	}
 	temp[0] = temp_x / mass_total;
 	temp[1] = temp_y / mass_total;
 	temp[2] = temp_z / mass_total;
+	temp[3] = x_absmax - temp[0];				//I think this is relatively sound.
+	temp[4] = y_absmax - temp[1];				//Max distance of particles from center.
+	temp[5] = z_absmax - temp[2];
 	return temp;
 }
 
@@ -200,7 +214,7 @@ void update_vel(Particle** part_array, int n, float delta_t) {
 	}
 }
 
-void update_temp(Particle** array, int n, float delta_t, std::array<long double, 3> center_pos) {
+void update_temp(Particle** array, int n, float delta_t, std::array<long double, 6> center_pos) {
 	#pragma omp parallel for num_threads(thread_n)
 	for (int i = 0; i < n; ++i) {
 		(*array[i]).temp_0 = (*array[i]).temp_f;
@@ -209,7 +223,6 @@ void update_temp(Particle** array, int n, float delta_t, std::array<long double,
 		long double dist_from_center = sqrt((center_pos[0] - i_x) * (center_pos[0] - i_x)
 			+ (center_pos[1] - i_y) * (center_pos[1] - i_y)
 			+ (center_pos[2] - i_z) * (center_pos[2] - i_z));
-
 		long double delta_temp{};
 		for (int j = 0; j < n; ++j)
 		{
@@ -296,7 +309,8 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 	float display_radius, float alpha, 
 	float beta, float gamma, short tick, 
 	int focus, float x_mov, float y_mov,
-	std::array<long double, 3> center_pos) {
+	std::array<long double, 6> center_pos) {
+	
 	float x_raw{}, y_raw{}, z_raw{};
 	float x_pos{}, y_pos{}, x_adj{}, y_adj{};
 	const float sin_a = std::sin(alpha);
@@ -338,10 +352,10 @@ void update_vertex_pos(Particle** array, sf::CircleShape** vertex_array, int n, 
 
 	for (int i = 0; i < n; ++i) {
 		if (i != focus) {
-			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / (max_den + 1)) * 2));
+			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / (max_den + 0.01)) * 2));
 		}
 		else {
-			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / max_den) * 4));
+			(*vertex_array[i]).setRadius(static_cast<float>(((*array[i]).density / (max_den + 0.01)) * 4));
 		}
 		
 		//long double value = abs(((*array[i]).density - min_den) / (max_den - min_den));
