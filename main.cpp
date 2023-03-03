@@ -111,11 +111,11 @@ int main()
 				}
 				if (event.key.code == sf::Keyboard::Space) {
 					if (pause_state == false) {
-						delta_t = 0.0;
+						//delta_t = 0.0;
 						pause_state = true;
 					}
 					else {
-						delta_t = 0.5;
+						//delta_t = 0.5;
 						pause_state = false;
 					}
 				}
@@ -136,43 +136,48 @@ int main()
 		//Start of main window loop.
 		window.clear(sf::Color::Black);
 
-		update_pos(part_array, n, delta_t);
-		center_pos = find_centermass(part_array, n, h);
-		grid.on_grid(part_array, n, grid_size, h, center_pos);
-		update_grav(part_array, n, tick, friction);
-		update_fluid(part_array, n, tick);
-		update_vel(part_array, n, delta_t);
-		update_temp(part_array, n, delta_t, center_pos);
+		if (pause_state == false) {
+			update_pos(part_array, n, delta_t);
+			center_pos = find_centermass(part_array, n, h);
+			grid.on_grid(part_array, n, grid_size, h, center_pos);
+			update_grav(part_array, n, tick, friction);
+			update_fluid(part_array, n, tick);
+			update_vel(part_array, n, delta_t);
+			update_temp(part_array, n, delta_t, center_pos);
+			
+			if (tick % 8000 == 0) {
+				//std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
+				//std::cout << (*part_array[focus]).ind_x << ", " << (*part_array[focus]).ind_y << ", " << (*part_array[focus]).ind_z << '\n';
+				a = grid.return_surr(part_array, focus, grid_size);
+				std::cout << center_pos[3] << '\n';
 
-		if (tick % 8000 == 0) {
-			//std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
-			std::cout << (*part_array[focus]).ind_x << ", " << (*part_array[focus]).ind_y << ", " << (*part_array[focus]).ind_z << '\n';
-			a.clear();
-			a = grid.return_surr(part_array, focus, grid_size);
-			std::cout << a.size() << '\n';
-		}
-
-		if (tick % compute_ratio == 0) {
-
-			//Rendering functions.
-			update_vertex_pos(part_array, vertex_array, n, pixel_num, 
-				display_radius, alpha, beta, gamma, tick, focus, x_mov, y_mov,
-				center_pos);
-			for (int i = 0; i < n; ++i) {
-				window.draw((*vertex_array[i]));
+				std::cout << a.size() << '\n';
 			}
-			window.display();
+
+			if (tick % compute_ratio == 0) {
+
+				//Rendering functions.
+				update_vertex_pos(part_array, vertex_array, n, pixel_num, 
+					display_radius, alpha, beta, gamma, tick, focus, x_mov, y_mov,
+					center_pos);
+				for (int i = 0; i < n; ++i) {
+					window.draw((*vertex_array[i]));
+				}
+				window.display();
+			}
+
+			if (tick == SHRT_MAX) {
+				/*auto t2 = std::chrono::high_resolution_clock::now();
+				auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+				std::cout << ms_int.count() << '\n';*/
+				//print_Data(part_array, n, focus);
+				check_Singularity(part_array, n);
+			}
+
+			tick += 1;
 		}
 
-		if (tick == SHRT_MAX) {
-			/*auto t2 = std::chrono::high_resolution_clock::now();
-			auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-			std::cout << ms_int.count() << '\n';*/
-			//print_Data(part_array, n, focus);
-			check_Singularity(part_array, n);
-		}
 
-		tick += 1;
 	}
 	delete[] part_array;
 	delete[] vertex_array;

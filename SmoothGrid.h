@@ -12,7 +12,7 @@ public:
 	SmoothGrid(int size, long double h) {
 		grid.resize(size, std::vector<std::vector<std::vector<int>>>
 				   (size, std::vector<std::vector<int>>
-				   (size, std::vector<int>{})));
+				   (size, std::vector<int>())));
 	}
 
 	void on_grid(Particle** array, int n, int grid_size, long double h, std::array<long double, 6> center_pos) {
@@ -91,7 +91,7 @@ public:
 				}
 			}
 		}
-	return temp;
+		return temp;
 	}
 };
 

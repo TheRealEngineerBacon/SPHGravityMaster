@@ -14,7 +14,7 @@ const long double one_over_pi = 1 / pi;
 constexpr int thread_n = 16;
 
 //SPH constants
-constexpr long double epsilon{ 1.4e6 };
+constexpr long double epsilon{ 1.5e6 };
 constexpr long double h = 1e6;
 constexpr long double eqstconst = .01;
 
@@ -99,9 +99,9 @@ std::array<long double, 6> find_centermass(Particle** array, int n, long double 
 	temp[0] = temp_x / mass_total;
 	temp[1] = temp_y / mass_total;
 	temp[2] = temp_z / mass_total;
-	temp[3] = x_absmax - temp[0];				//I think this is relatively sound.
-	temp[4] = y_absmax - temp[1];				//Max distance of particles from center.
-	temp[5] = z_absmax - temp[2];
+	temp[3] = x_absmax + 1e3;				//I think this is relatively sound.
+	temp[4] = y_absmax + 1e3;				//Max distance of particles from center.
+	temp[5] = z_absmax + 1e3;
 	return temp;
 }
 
