@@ -23,9 +23,9 @@ public:
 				int a{}, b{}, c{};
 				long double x{ (*array[i]).x }, y{ (*array[i]).y }, z{ (*array[i]).z };
 				long double h_half = h_adj / 2;
-				a = floor((x + h_half) / h_adj) + offset;
-				b = floor((y + h_half) / h_adj) + offset;
-				c = floor((z + h_half) / h_adj) + offset;
+				a = floor((x + h_half - center_pos[0]) / h_adj) + offset;
+				b = floor((y + h_half - center_pos[1]) / h_adj) + offset;
+				c = floor((z + h_half - center_pos[2]) / h_adj) + offset;
 				if ((*array[i]).ind_x != a || (*array[i]).ind_y != b || (*array[i]).ind_z != c) {
 					int ind_x = (*array[i]).ind_x;
 					int ind_y = (*array[i]).ind_y;
@@ -51,9 +51,9 @@ public:
 		int a{}, b{}, c{};
 		long double x{ (*array[i]).x }, y{ (*array[i]).y }, z{ (*array[i]).z };
 		long double h_half = h_adj / 2;
-		a = floor((x + h_half) / h_adj) + offset;
-		b = floor((y + h_half) / h_adj) + offset;
-		c = floor((z + h_half) / h_adj) + offset;
+		a = floor((x + h_half - center_pos[0]) / h_adj) + offset;
+		b = floor((y + h_half - center_pos[1]) / h_adj) + offset;
+		c = floor((z + h_half - center_pos[2]) / h_adj) + offset;
 		grid[a][b][c].push_back((*array[i]).id);
 		(*array[i]).ind_x = a;
 		(*array[i]).ind_y = b;
@@ -70,20 +70,20 @@ public:
 
 	long double calculate_h(int grid_size, long double h, std::array<long double, 6> center_pos) {
 		long double max_element = *std::max_element(center_pos.begin() + 3, center_pos.end());
-		int adj_value = ceil(((max_element * 2) / grid_size) / h);
-		return std::fmaxl(adj_value * h, 2 * h);
+		int adj_value = (max_element * 2) / grid_size;
+		return std::fmaxl(adj_value, h);
 	}
 
-	std::vector<int> return_surr(Particle** array, int i, int grid_size) {
+	std::vector<int> return_surr(Particle** array, int focus, int grid_size) {
 		std::vector<int> temp;
-		int sindex_x{ (*array[i]).ind_x }, sindex_y{ (*array[i]).ind_y }, sindex_z{ (*array[i]).ind_z };
-		for (int i = sindex_x-1; i < sindex_x + 2; ++i) {
+		int sindex_x{ (*array[focus]).ind_x }, sindex_y{ (*array[focus]).ind_y }, sindex_z{ (*array[focus]).ind_z };
+		for (int i = sindex_x - 1; i < (sindex_x + 2); ++i) {
 			if (i < 0 || i > grid_size - 1)
 				continue;
-			for (int j = sindex_y-1; j < sindex_y + 2; ++j) {
+			for (int j = sindex_y - 1; j < (sindex_y + 2); ++j) {
 				if (j < 0 || j > grid_size - 1)
 					continue;
-				for (int k = sindex_z-1; k < sindex_z + 2; ++k) {
+				for (int k = sindex_z - 1; k < (sindex_z + 2); ++k) {
 					if (k < 0 || k > grid_size - 1)
 						continue;
 					for (int p = 0; p < grid[i][j][k].size(); ++p)
