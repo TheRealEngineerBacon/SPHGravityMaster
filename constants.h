@@ -13,7 +13,7 @@ float delta_t = 0.5;
 short tick{};
 bool friction{ false };
 constexpr long double h = 1e6;
-int grid_size = 37;
+int grid_size = 13;
 
 
 //Render Constants

@@ -122,11 +122,11 @@ int main()
 				if (event.key.code == sf::Keyboard::F) {
 					if (friction == false) {
 						friction = true;
-						std::cout << friction << '\n';
+						std::cout << "Friction: True" << '\n';
 					}
 					else {
 						friction = false;
-						std::cout << friction << '\n';
+						std::cout << "Friction: False" << '\n';
 					}
 				}
 
@@ -149,8 +149,7 @@ int main()
 				//std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
 				//std::cout << (*part_array[focus]).ind_x << ", " << (*part_array[focus]).ind_y << ", " << (*part_array[focus]).ind_z << '\n';
 				a = grid.return_surr(part_array, focus, grid_size);
-				std::cout << center_pos[3] << '\n';
-
+				//std::cout << grid.grid[6][6][6].size() << '\n';
 				std::cout << a.size() << '\n';
 			}
 

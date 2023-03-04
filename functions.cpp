@@ -16,7 +16,7 @@ constexpr int thread_n = 16;
 //SPH constants
 constexpr long double epsilon{ 1.5e6 };
 constexpr long double h = 1e6;
-constexpr long double eqstconst = .01;
+constexpr long double eqstconst = 0.01;
 
 
 //Simulation functions
@@ -81,14 +81,20 @@ std::array<long double, 6> find_centermass(Particle** array, int n, long double 
 	long double temp_x{}, temp_y{}, temp_z{}, mass_total{};
 	long double x_absmax{}, y_absmax{}, z_absmax{};
 	for (int i = 0; i < n; ++i) {
-		long double x_abs{}, y_abs{}, z_abs{};
 		mass_total += (*array[i]).mass;
 		temp_x += (*array[i]).mass * (*array[i]).x;
 		temp_y += (*array[i]).mass * (*array[i]).y;
 		temp_z += (*array[i]).mass * (*array[i]).z;
-		x_abs = std::abs((*array[i]).x);
-		y_abs = std::abs((*array[i]).y);
-		z_abs = std::abs((*array[i]).z);
+	}
+	temp[0] = temp_x / mass_total;
+	temp[1] = temp_y / mass_total;
+	temp[2] = temp_z / mass_total;
+	
+	for (int i = 0; i < n; ++i) {
+		long double x_abs{}, y_abs{}, z_abs{};
+		x_abs = std::abs((*array[i]).x - temp[0]);
+		y_abs = std::abs((*array[i]).y - temp[1]);
+		z_abs = std::abs((*array[i]).z - temp[2]);
 		if (x_abs > x_absmax)
 			x_absmax = x_abs;
 		if (y_abs > y_absmax)
@@ -96,11 +102,8 @@ std::array<long double, 6> find_centermass(Particle** array, int n, long double 
 		if (z_abs > z_absmax)
 			z_absmax = z_abs;
 	}
-	temp[0] = temp_x / mass_total;
-	temp[1] = temp_y / mass_total;
-	temp[2] = temp_z / mass_total;
-	temp[3] = x_absmax + 1e3;				//I think this is relatively sound.
-	temp[4] = y_absmax + 1e3;				//Max distance of particles from center.
+	temp[3] = x_absmax + 1e3;
+	temp[4] = y_absmax + 1e3;
 	temp[5] = z_absmax + 1e3;
 	return temp;
 }
