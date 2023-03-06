@@ -3,9 +3,11 @@
 
 #include "particle.h"
 #include <SFML/Graphics.hpp>
-
+#include "SmoothGrid.h"
 
 //Simulation functions
+void set_initial_position(Particle** array, int n);
+
 long double W(long double dist, long double h);
 
 long double grad_W(long double dist, long double h);
@@ -14,7 +16,11 @@ void update_pos(Particle** part_array, int n, float delta_t);
 
 std::array<long double, 6> find_centermass(Particle** array, int n, long double h);
 
+void update_surr(Particle** array, int n, int grid_size, SmoothGrid* grid);
+
 void update_grav(Particle** array, int n, short tick, bool friction);
+
+void update_density(Particle** array, int n);
 
 void update_fluid(Particle** array, int n, short tick);
 
