@@ -2,6 +2,7 @@
 #define PARTICLE_H
 
 #include <iostream>
+#include <vector>
 
 long double rand_ld(long double lower, long double upper);
 
@@ -15,6 +16,7 @@ public:
 	long double z{}, z_prev{}, z_v{}, z_vprev{}, z_accel{}, z_accelprev{};
 	long double density{}, pressure{}, temp_0{ 0 }, temp_f{ 0 };
 	int ind_x{}, ind_y{}, ind_z{};
+	std::vector<int> surr;
 	bool on_grid{ false };
 
 	Particle(int num, int n)
