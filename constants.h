@@ -6,14 +6,14 @@
 
 
 //Simulation Constants
-constexpr int n{ 256 };
+constexpr int n{ 512 };
 constexpr int compute_ratio = 100;
 std::array<long double, 6> center_pos{};
-float delta_t = 0.5;
+double delta_t = 0.2;
 short tick{};
 bool friction{ false };
 constexpr long double h = 1e6;
-const int grid_size = 19;
+const int grid_size = 17;
 
 
 //Render Constants
@@ -22,6 +22,6 @@ float alpha{}, beta{}, gamma{}, scale{};
 int focus{};
 float center_mass{}, x_mov, y_mov;
 float display_radius{ 1e8 };
-bool pause_state = true;
+bool pause_state = false;
 
 #endif

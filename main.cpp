@@ -22,7 +22,7 @@ int main()
 		part_array[i] = new Particle(i, n);
 	}
 	update_grav(part_array, n, tick, friction);
-	set_initial_position(part_array, n, x);
+	set_initial_position(part_array, n);
 
 	//Create spatial partitioning grid for faster fluid computation.
 	SmoothGrid* grid = new SmoothGrid(grid_size, h, n);
@@ -87,14 +87,14 @@ int main()
 					if (focus > (n - 1)) {
 					focus = n - 1;
 					}
-					std::cout << focus << '\n';
+					std::cout << "Focus: Particle " << focus << '\n';
 				}
 				if (event.key.code == sf::Keyboard::J) {
 					focus -= 1;
 					if (focus < 0) {
 						focus = 0;
 					}
-					std::cout << focus << '\n';
+					std::cout << "Focus: Particle " << focus << '\n';
 				}
 				if (event.key.code == sf::Keyboard::W) {
 					y_mov -= 1e6f;
@@ -146,10 +146,11 @@ int main()
 			update_vel(part_array, n, delta_t);
 			update_temp(part_array, n, delta_t, center_pos);
 			
-			//if (tick % 8000 == 0) {
-			//	std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
-			//	std::cout << (*part_array[focus]).ind_x << ", " << (*part_array[focus]).ind_y << ", " << (*part_array[focus]).ind_z << '\n';
-			//}
+			if (tick % 8000 == 0) {
+				//std::cout << std::setprecision(12) << (*part_array[focus]).temp_f << '\n';
+				std::cout << (*part_array[focus]).ind_x << ", " << (*part_array[focus]).ind_y << ", " << (*part_array[focus]).ind_z << '\n';
+				std::cout << ((*part_array[focus]).surr).size() << '\n';
+			}
 
 			if (tick % compute_ratio == 0) {
 

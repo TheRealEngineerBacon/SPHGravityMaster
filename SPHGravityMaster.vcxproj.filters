@@ -37,7 +37,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="SPH.py">
+    <None Include="SPH.txt">
       <Filter>Source Files</Filter>
     </None>
     <None Include="README.md" />
