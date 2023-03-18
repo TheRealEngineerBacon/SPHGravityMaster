@@ -12,7 +12,7 @@ long double W(long double dist, long double h);
 
 long double grad_W(long double dist, long double h);
 
-void update_pos(Particle** part_array, int n, float delta_t);
+void update_pos(Particle** part_array, int n, double delta_t);
 
 std::array<long double, 6> find_centermass(Particle** array, int n, long double h);
 
@@ -24,9 +24,9 @@ void update_density(Particle** array, int n);
 
 void update_fluid(Particle** array, int n, short tick);
 
-void update_vel(Particle** part_array, int n, float delta_t);
+void update_vel(Particle** part_array, int n, double delta_t);
 
-void update_temp(Particle** array, int n, float delta_t, std::array<long double, 6> center_pos);
+void update_temp(Particle** array, int n, double delta_t, std::array<long double, 6> center_pos);
 
 
 //Utility functions

@@ -21,6 +21,7 @@ public:
 
 	Particle(int num, int n)
 	{
+		surr.reserve(32);
 		if (num != 0) {
 			id = num;
 			mass = ((long double)5.97e24 / n);

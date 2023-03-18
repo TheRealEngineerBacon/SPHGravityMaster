@@ -69,7 +69,7 @@ public:
 	long double calculate_h(const int grid_size, const long double h, const std::array<long double, 6> center_pos) {
 		const long double element = *(std::max_element(center_pos.begin() + 3, center_pos.end()));
 		const long double adj_value = (element * 2) / grid_size;
-		return std::fmaxl(adj_value, 1.5 * h);
+		return std::fmaxl(adj_value, 2.1 * h);
 	}
 };
 

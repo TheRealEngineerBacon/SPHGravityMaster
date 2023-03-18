@@ -14,7 +14,7 @@ constexpr long double G = -6.67430e-11;
 constexpr long double pi = 3.14159265359;
 constexpr long double e = 2.718281828459045;
 const long double one_over_pi = 1 / pi;
-constexpr int thread_n = 12;
+constexpr int thread_n = 20;
 
 //SPH constants
 constexpr long double epsilon{ 1.5e6 };
@@ -25,27 +25,19 @@ constexpr long double eqstconst = 0.1;
 
 //Simulation functions
 void set_initial_position(Particle** array, int n) {
-	int size = (int)ceil(cbrt(n));
-	int mid = (int)floor(size / 2);
-	long double length = 4e7 / mid;
-	int p{0};
-	for (int i = -mid; i < mid + 1; ++i) {
-		for (int j = -mid; j < mid + 1; ++j) {
-			for (int k = -mid; k < mid + 1; ++k) {
-				if (p < n) {
-					(*array[p]).x = i * length;
-					(*array[p]).y = j * length;
-					(*array[p]).z = k * length;
-					(*array[p]).x_prev = (*array[p]).x;
-					(*array[p]).y_prev = (*array[p]).y;
-					(*array[p]).z_prev = (*array[p]).z;
-					p += 1;
-				}
-				else {
-					break;
-				}
-			}
-		}
+	int max = (int)ceil(cbrt(n));
+	int mid = (int)floor((max) / 2);
+	long double length = 2.5e6;
+	for (int p = 0; p < n; ++p) {
+		int z = p % max;
+		int y = ((p - z) / max) % max;
+		int x = (((p - z) / max) - y) / max;
+		(*array[p]).x = (x - mid) * length;
+		(*array[p]).y = (y - mid) * length;
+		(*array[p]).z = (z - mid) * length;
+		(*array[p]).x_prev = (*array[p]).x;
+		(*array[p]).y_prev = (*array[p]).y;
+		(*array[p]).z_prev = (*array[p]).z;
 	}
 }
 
@@ -93,7 +85,7 @@ long double grad_W(long double dist, long double h) {
 	//return (-2 / (h * h * h * h * h * pi_threehalf)) * exp(-(dist * dist) / (h * h));
 }
 
-void update_pos(Particle** array, int n, float delta_t) {
+void update_pos(Particle** array, int n, double delta_t) {
 #ifdef MULTI
 	#pragma omp parallel for num_threads(thread_n)
 #endif
@@ -140,39 +132,37 @@ std::array<long double, 6> find_centermass(Particle** array, int n, long double 
 }
 
 void update_surr(Particle** array, int n, int grid_size, SmoothGrid* grid) {
-
-#ifdef MULTI
 	#pragma omp parallel for num_threads(thread_n)
-#endif
 	for (int p = 0; p < n; ++p) {
 		(*array[p]).surr.clear();
 		const int p_x{ (*array[p]).ind_x }, p_y{ (*array[p]).ind_y }, p_z{ (*array[p]).ind_z };
+		
 		for (int i = p_x - 1; i < (p_x + 2); ++i) {
-
-			if (i < 0 || i > grid_size - 1)
+			if (i < 0 || i > grid_size - 1) {
 				continue;
+			}
 
 			for (int j = p_y - 1; j < (p_y + 2); ++j) {
-
-				if (j < 0 || j > grid_size - 1)
+				if (j < 0 || j > grid_size - 1) {
 					continue;
+				}
 
 				for (int k = p_z - 1; k < (p_z + 2); ++k) {
-
-					if (k < 0 || k > grid_size - 1)
+					if (k < 0 || k > grid_size - 1) {
 						continue;
-					
+					}
+					if ((*grid).grid[i][j][k].empty()) {
+						continue;
+					}
 					for (int m = 0; m < (*grid).grid[i][j][k].size(); ++m)
-						(*array[p]).surr.push_back((*grid).grid[i][j][k][m]);
+						(*array[p]).surr.emplace_back((*grid).grid[i][j][k][m]);
 				}
 			}
 		}
 	}
 }
 
-void update_grav(Particle** array, int n, short tick, bool friction)
-{
-	//Computation of gravitation forces and density summation.
+void update_grav(Particle** array, int n, short tick, bool friction) {
 #ifdef MULTI
 	#pragma omp parallel for num_threads(thread_n)
 #endif
@@ -219,7 +209,7 @@ void update_grav(Particle** array, int n, short tick, bool friction)
 			nu_y = 0.0; 
 			nu_z = 0.0;
 		}
-		const long double b = 1e-3;
+		const long double b = 1e-2;
 		(*array[i]).x_accel = a_x - ((*array[i]).x_vprev * nu_x) + (-b * ((*array[i]).temp_f - 130) * a_x);
 		(*array[i]).y_accel = a_y - ((*array[i]).y_vprev * nu_y) + (-b * ((*array[i]).temp_f - 130) * a_y);
 		(*array[i]).z_accel = a_z - ((*array[i]).z_vprev * nu_z) + (-b * ((*array[i]).temp_f - 130) * a_z);
@@ -293,7 +283,7 @@ void update_fluid(Particle** array, int n, short tick) {
 	}
 }
 
-void update_vel(Particle** part_array, int n, float delta_t) {
+void update_vel(Particle** part_array, int n, double delta_t) {
 #ifdef MULTI
 	#pragma omp parallel for num_threads(thread_n)
 #endif
@@ -307,7 +297,7 @@ void update_vel(Particle** part_array, int n, float delta_t) {
 	}
 }
 
-void update_temp(Particle** array, int n, float delta_t, std::array<long double, 6> center_pos) {
+void update_temp(Particle** array, int n, double delta_t, std::array<long double, 6> center_pos) {
 #ifdef MULTI
 	#pragma omp parallel for num_threads(thread_n)
 #endif
@@ -332,9 +322,9 @@ void update_temp(Particle** array, int n, float delta_t, std::array<long double,
 				delta_temp += mass_density * temp_diff * gradient;
 			}
 		}
-		const long double conduc{ 100 };
-		const long double c_p{ 100 };
-		if (dist_from_center > (6 * h)) {
+		const long double conduc{ 1000 };
+		const long double c_p{ 1 };
+		if (dist_from_center > (center_pos[3] - (0.5 * h))) {
 			(*array[i]).temp_f  = 30;
 		} else if (dist_from_center > (2 * h)) {
 			(*array[i]).temp_f += ((2 * conduc)/((*array[i]).density * c_p)) * delta_temp * delta_t;
